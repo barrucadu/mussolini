@@ -10,6 +10,8 @@ module Graph
   , loseEdge
   -- * Paths
   , shortestPath
+  , pathCost
+  , pathScore
   ) where
 
 import qualified Data.Graph.Inductive.Graph as G
@@ -115,6 +117,22 @@ shortestPath from to gr = go $ G.sp (fromEnum from) (fromEnum to) (graph gr2) wh
   -- have 1 added. This means that a single n-cost edge will be
   -- preferred over a multi-edge path summing to n.
   gr2 = modgraph (\(n1, n2, l) -> Just (n1, n2, l+1)) gr
+
+-- | Get the total number of cards needed to build a path.
+pathCost :: Num n => [(a, a, Label)] -> n
+pathCost = fromIntegral . sum . map (\(_, _, l) -> lweight l)
+
+-- | Get the score gained by building a path.
+pathScore :: Num n => [(a, a, Label)] -> n
+pathScore = sum . map (\(_, _, l) -> score l) where
+  score lbl = case lweight lbl of
+    1 -> 1
+    2 -> 2
+    3 -> 4
+    4 -> 7
+    6 -> 13
+    8 -> 21
+    _ -> 0
 
 
 -------------------------------------------------------------------------------
