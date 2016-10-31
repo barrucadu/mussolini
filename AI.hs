@@ -81,7 +81,7 @@ suggest :: Enum a => State a -> Move a
 suggest ai | drawLocomotive = DrawLocomotiveCard
            | claimRoute     = head planned
            | drawTickets    = DrawTickets
-           | canBuild       = head routes
+           | shouldBuild    = head routes
            | otherwise      = DrawCards colour1 colour2
   where
     drawLocomotive = M.lookup Nothing (ontable ai) `notElem` [Nothing, Just 0]
@@ -89,7 +89,7 @@ suggest ai | drawLocomotive = DrawLocomotiveCard
     drawTickets    = null (pendingTickets ai) &&
                      remainingTrains ai > minRemainingTrains &&
                      length (missedTickets ai) < maxMissedTickets
-    canBuild       = not (null routes)
+    shouldBuild    = not (null routes) && null (plan ai)
 
     -- routes that can be claimed.
     planned =
