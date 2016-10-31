@@ -5,12 +5,20 @@ module AI
     -- * Plans
   , planTickets
   , replanTickets
+  , inPlan
+    -- * Actions
+  , draw
+  , discard
+  , claim
+  , enemyClaim
   ) where
 
 import Control.Arrow ((&&&))
 import Control.Monad (filterM)
 import Data.List (foldl', sortOn)
 import Data.List.NonEmpty (NonEmpty(..), toList)
+import Data.Map (Map)
+import qualified Data.Map as M
 import Data.Ord (Down(..))
 
 import Graph
@@ -29,6 +37,10 @@ data State a = State
   , plan :: [(a, a, Label)]
   -- ^ Planned edges to build. In the case of parallel edges, any one
   -- is acceptable.
+  , hand :: Map (Maybe Colour) Int
+  -- ^ The current hand. @Nothing@ indicates a locomotive.
+  , ontable :: Map (Maybe Colour) Int
+  -- ^ The currently-visible cards. @Nothing@ indicates a locomotive.
   , remainingTrains :: Int
   -- ^ The number of trains remaining to build with, used to discard
   -- plans which are too close for comfort.
@@ -40,7 +52,7 @@ data State a = State
 
 -- | Construct a new game state.
 newState :: Int -> Graph a -> State a
-newState = State [] [] [] []
+newState = State [] [] [] [] M.empty M.empty
 
 
 -------------------------------------------------------------------------------
@@ -101,16 +113,51 @@ planTickets' ai = map (\(t:ts) -> (t:|ts, fst $ doplan (t:ts))) . powerset where
         stepPlan (p, w) (destA, destB, _) =
           let path = shortestPath destA destB w
               p' = [ (a, b, l) | (a, b, l) <- path
-                               , not $ (a, b) `elem'` p
+                               , not $ inPlan a b p
                    ]
               claim (a, b, l) = claimEdge a b (head $ lcolour l)
           in (p ++ p', foldl' (flip claim) w path)
     in foldl' stepPlan base (tickets0 ++ ts)
 
-  -- like 'elem', but using 'Enum' instead of 'Eq', and
-  -- order-agnostic.
-  elem' x@(a1, b1) ((a2, b2, _):xs) =
-    ((fromEnum a1, fromEnum b1) == (fromEnum a2, fromEnum b2)) ||
-    ((fromEnum b1, fromEnum a1) == (fromEnum a2, fromEnum b2)) ||
-    elem' x xs
-  elem' _ [] = False
+-- | Check if an edge is in a plan.
+inPlan :: Enum a => a -> a -> [(a, a, label)] -> Bool
+inPlan a1 b1 = go where
+  go ((a2, b2, _):xs) =
+    (fromEnum a2, fromEnum b2) `elem` cmps || go xs
+  cmps = [(fromEnum a1, fromEnum b1), (fromEnum b1, fromEnum a1)]
+
+-------------------------------------------------------------------------------
+-- Actions
+
+-- | Draw new cards.
+draw :: State a -> [Maybe Colour] -> State a
+draw ai cards = ai { hand = foldl' (flip $ M.alter go) (hand ai) cards } where
+  go (Just i) = Just (i+1)
+  go Nothing  = Just 1
+
+-- | Discard cards.
+discard :: State a -> [Maybe Colour] -> State a
+discard ai cards = ai { hand = foldl' (flip $ M.update go) (hand ai) cards } where
+  go i | i <= 1    = Nothing
+       | otherwise = Just (i-1)
+
+-- | Claim a route. This removes the route from the plan (if it's
+-- present), but does not recompute the plan if it isn't, which may be
+-- desirable in some cases.
+--
+-- Make sure to 'discard' the needed cards! This function doesn't do
+-- so automatically, as locomotives give rise to multiple ways to pay
+-- for the same route in some cases.
+claim :: Enum a => State a -> a -> a -> Maybe Colour -> State a
+claim ai from to colour = ai { plan = newPlan, world = newWorld } where
+  newWorld = claimEdge from to colour (world ai)
+  newPlan = filter go (plan ai)
+  go p = not $ inPlan from to [p]
+
+-- | Have an enemy claim a route. If the route is in the plan, it is
+-- recomputed.
+enemyClaim :: Enum a => State a -> a -> a -> Maybe Colour -> State a
+enemyClaim ai from to colour = ai { plan = newPlan, world = newWorld } where
+  newWorld = loseEdge from to colour (world ai)
+  newPlan | inPlan from to (plan ai) = replanTickets ai { world = newWorld }
+          | otherwise = plan ai
