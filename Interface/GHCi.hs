@@ -13,7 +13,7 @@ import qualified AI
 -- | GHCi interface to the AI.
 --
 -- @
--- (aiSuggest, aiPlan, aiReplan, aiSetCards, aiDraw, aiDiscard, aiClaim, aiEnemyClaim, aiPrintState) <- newAI state
+-- (aiSuggest, aiPlan, aiReplan, aiDo, aiPrintState) <- newAI state
 -- @
 --
 -- Then call the bound functions to interact with the game,
@@ -22,11 +22,7 @@ newAI :: (Enum a, Show a) => State a
   -> IO ( IO (Move a)
         , NonEmpty (Ticket a) -> IO (NonEmpty (Ticket a))
         , IO ()
-        , [Maybe Colour] -> IO ()
-        , [Maybe Colour] -> IO ()
-        , [Maybe Colour] -> IO ()
-        , a -> a -> Maybe Colour -> IO ()
-        , a -> a -> Maybe Colour -> IO ()
+        , (State a -> State a) -> IO ()
         , IO ()
         )
 newAI s = do
@@ -35,11 +31,7 @@ newAI s = do
   pure ( aiSuggest    ref
        , aiPlan       ref
        , aiReplan     ref
-       , aiSetCards   ref
-       , aiDraw       ref
-       , aiDiscard    ref
-       , aiClaim      ref
-       , aiEnemyClaim ref
+       , modifyIORef  ref
        , aiPrintState ref
        )
 
@@ -60,26 +52,6 @@ aiPlan ref ts = do
 -- | Wrapper for 'AI.replanTickets'.
 aiReplan :: Enum a => IORef (State a) -> IO ()
 aiReplan ref = modifyIORef ref $ \s -> s { AI.plan = AI.replanTickets s }
-
--- | Wrapper for 'AI.setCards'.
-aiSetCards :: IORef (State a) -> [Maybe Colour] -> IO ()
-aiSetCards ref colours = modifyIORef ref (AI.setCards colours)
-
--- | Wrapper for 'AI.draw'.
-aiDraw :: IORef (State a) -> [Maybe Colour] -> IO ()
-aiDraw ref colours = modifyIORef ref (AI.draw colours)
-
--- | Wrapper for 'AI.discard'.
-aiDiscard :: IORef (State a) -> [Maybe Colour] -> IO ()
-aiDiscard ref colours = modifyIORef ref (AI.discard colours)
-
--- | Wrapper for 'AI.claim'.
-aiClaim :: Enum a => IORef (State a) -> a -> a -> Maybe Colour -> IO ()
-aiClaim ref from to colour = modifyIORef ref (AI.claim from to colour)
-
--- | Wrapper for 'AI.enemyClaim'.
-aiEnemyClaim :: Enum a => IORef (State a) -> a -> a -> Maybe Colour -> IO ()
-aiEnemyClaim ref from to colour = modifyIORef ref (AI.claim from to colour)
 
 -- | Print the state of the AI.
 aiPrintState :: Show a => IORef (State a) -> IO ()
