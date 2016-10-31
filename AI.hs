@@ -310,10 +310,13 @@ discard cards ai = ai { hand = foldl' (flip $ M.update go) (hand ai) cards } whe
 -- so automatically, as locomotives give rise to multiple ways to pay
 -- for the same route in some cases.
 claim :: Enum a => a -> a -> Colour -> State a -> State a
-claim from to colour ai = updateTickets ai
-  { plan  = filter (not . inPlan from to . (:[])) (plan ai)
-  , world = claimEdge from to colour (world ai)
-  }
+claim from to colour ai = case edgeFromTo from to (world ai) of
+  Just lbl -> updateTickets ai
+    { plan  = filter (not . inPlan from to . (:[])) (plan ai)
+    , world = claimEdge from to colour (world ai)
+    , remainingTrains = remainingTrains ai - lweight lbl
+    }
+  Nothing -> ai
 
 -- | Helper for 'claim' for the case where there is only a single
 -- (remaining) route between the two places.
