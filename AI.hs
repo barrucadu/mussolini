@@ -157,7 +157,7 @@ planTickets :: Enum a
   -- plan.
   -> (NonEmpty (Ticket a), [(a, a, Label)])
 planTickets tickets ai = fst2 . head . sortOn cmp $ planTickets' ai tickets where
-  cmp (_, path, waste) = (waste, tclass path, Down $ pathScore path)
+  cmp (_, path, waste) = (waste, tclass path, Down $ pathScore path) :: (Int, Int, Down Int)
   fst2 (a, b, _) = (a, b)
 
   -- split up path lengths into fairly coarse-grained categories
@@ -183,19 +183,19 @@ planTickets' :: Enum a
   => State a
   -> NonEmpty (Ticket a)
   -> [(NonEmpty (Ticket a), [(a, a, Label)], Int)]
-planTickets' ai ts
+planTickets' ai ts0
     | null reachable = [(leastBad:|[], fst plan0, tvalue leastBad)]
     | otherwise = map (\(r:rs) -> (r:|rs, fst $ doplan (r:rs), 0)) (powerset reachable)
   where
     -- the reachable tickets
-    reachable = filter isReachable (L.toList ts)
+    reachable = filter isReachable (L.toList ts0)
 
     -- the least-bad unreachable ticket. As at least one must be kept,
     -- this one is picked if none are reachable. The use of 'head' is
     -- safe here, as this value is only inspected if the 'reachable'
     -- list is empty, which means there must be at least one
     -- unreachable ticket.
-    leastBad = head . sortOn tvalue . filter (not . isReachable) . L.toList $ ts
+    leastBad = head . sortOn tvalue . filter (not . isReachable) . L.toList $ ts0
 
     -- check if a ticket is reachable
     isReachable t = isJust $ shortestPath (tfrom t) (tto t) (world ai)
@@ -224,8 +224,8 @@ planTickets' ai ts
                 p' = [ (a, b, l) | (a, b, l) <- path
                                  , not $ inPlan a b p
                      ]
-                claim (a, b, l) = claimEdge a b (head $ lcolour l)
-            in (p ++ p', foldl' (flip claim) w path)
+                claimE (a, b, l) = claimEdge a b (head $ lcolour l)
+            in (p ++ p', foldl' (flip claimE) w path)
       in foldl' stepPlan base (tickets0 ++ ts)
 
 -- | Check if any pending tickets have been completed or blocked, and
