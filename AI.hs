@@ -5,6 +5,8 @@ module AI
     -- * AI
   , Move(..)
   , suggest
+  , suggestDraw
+  , suggestRoute
     -- * Plans
   , Ticket(..)
   , planTickets
@@ -81,57 +83,22 @@ data Move a
 
 -- | Suggest the next move.
 suggest :: Enum a => State a -> Move a
-suggest ai | drawLocomotive = DrawLocomotiveCard
-           | claimRoute     = head planned
+suggest ai | drawLocomotive = suggestedDraw
+           | claimRoute     = fromJust planned
            | drawTickets    = DrawTickets
-           | shouldBuild    = head routes
-           | otherwise      = DrawCards colour1 colour2
+           | shouldBuild    = fromJust routes
+           | otherwise      = suggestedDraw
   where
-    drawLocomotive = M.findWithDefault 0 Special (ontable ai) > 0
-    claimRoute     = not (null planned)
+    drawLocomotive = case suggestedDraw of DrawLocomotiveCard -> True; _ -> False
+    claimRoute     = isJust planned
     drawTickets    = null (pendingTickets ai) &&
                      remainingTrains ai > minRemainingTrains &&
                      length (missedTickets ai) < maxMissedTickets
-    shouldBuild    = not (null routes) && null (plan ai)
+    shouldBuild    = isJust routes && null (plan ai)
 
-    -- routes that can be claimed.
-    planned =
-      [ ClaimRoute from to colour | (from, to, label) <- plan ai
-                                  , colour <- lcolour label
-                                  , canClaim colour (llocos label) (lweight label)
-      ]
-    routes =
-      [ ClaimRoute from to colour | (from, to, label) <- toList (world ai)
-                                  , colour <- lcolour label
-                                  , lweight label > 0
-                                  , canClaim colour (llocos label) (lweight label)
-      ]
-
-    canClaim colour locos weight =
-      let numLocos = M.findWithDefault 0 Special (hand ai)
-          hand' = M.update (\n -> if n <= locos then Nothing else Just (n-locos)) Special (hand ai)
-          remainingLocos = M.findWithDefault 0 Special hand'
-          trains
-            | colour == Special = listToMaybe . sortOn (Down . snd) $ M.assocs hand'
-            | otherwise = Just (colour, M.findWithDefault 0 colour hand')
-      in case trains of
-        Just (Special, _)  -> numLocos >= weight
-        Just (_, num) -> numLocos >= locos && num + remainingLocos >= weight - locos
-        Nothing -> False
-
-    -- the colours to claim.
-    (colour1, colour2) =
-      let neededColours = sortOn snd [(c, i) | c <- [minBound..maxBound], let i = nInPlan c, i > 0]
-          nInPlan c = sum $ map (wval c) (plan ai)
-          wval c (_, _, l)
-            | c `elem` lcolour l || Special `elem` lcolour l = lweight l
-            | otherwise = 0
-          hasColour c i = M.findWithDefault 0 c (ontable ai) >= i
-      in case filter (\(c,_) -> hasColour c 1) neededColours of
-        ((colour, n):rest)
-          | n >= 2 && hasColour colour 2 -> (Just colour, Just colour)
-          | otherwise -> (Just colour, fst <$> listToMaybe rest)
-        [] -> (Nothing, Nothing)
+    suggestedDraw = suggestDraw ai
+    planned = suggestRoute True ai
+    routes  = suggestRoute False ai
 
     -- if the number of remaining trains is below this point, don't
     -- draw a new ticket.
@@ -140,6 +107,58 @@ suggest ai | drawLocomotive = DrawLocomotiveCard
     -- if the number of missed tickets is greater than this point,
     -- don't draw a new ticket.
     maxMissedTickets = 3
+
+-- | Suggest a card to draw, with preference towards locomotives.
+suggestDraw :: State a -> Move a
+suggestDraw ai
+    | M.findWithDefault 0 Special (ontable ai) > 0 = DrawLocomotiveCard
+    | otherwise = DrawCards colour1 colour2
+  where
+    -- the needed colours
+    neededColours = sortOn snd [(c, i) | c <- [minBound..maxBound], let i = nInPlan c, i > 0]
+
+    -- how many times a colour shows up in the plan
+    nInPlan c = sum $ map (wval c) (plan ai) where
+      wval c (_, _, l)
+        | c `elem` lcolour l || Special `elem` lcolour l = lweight l
+        | otherwise = 0
+
+    -- if a colour is on the table
+    hasColour c i = M.findWithDefault 0 c (ontable ai) >= i
+
+    -- the colours to claim.
+    (colour1, colour2) = case filter (\(c,_) -> hasColour c 1) neededColours of
+      ((colour, n):rest)
+        | n >= 2 && hasColour colour 2 -> (Just colour, Just colour)
+        | otherwise -> (Just colour, fst <$> listToMaybe rest)
+      [] -> (Nothing, Nothing)
+
+-- | Suggest a route to build, if possible.
+suggestRoute :: Enum a => Bool -> State a -> Maybe (Move a)
+suggestRoute onlyPlanned ai = listToMaybe routes where
+  -- all routes.
+  allRoutes | onlyPlanned = plan
+            | otherwise   = toList . world
+
+  -- routes which can be claimed.
+  routes =
+    [ ClaimRoute from to colour | (from, to, label) <- allRoutes ai
+                                , colour <- lcolour label
+                                , canClaim colour (llocos label) (lweight label)
+    ]
+
+  -- check if there are enough locomotives and trains in hand to claim the route.
+  canClaim colour locos weight =
+    let numLocos = M.findWithDefault 0 Special (hand ai)
+        hand' = M.update (\n -> if n <= locos then Nothing else Just (n-locos)) Special (hand ai)
+        remainingLocos = M.findWithDefault 0 Special hand'
+        trains
+          | colour == Special = listToMaybe . sortOn (Down . snd) $ M.assocs hand'
+          | otherwise = Just (colour, M.findWithDefault 0 colour hand')
+    in case trains of
+      Just (Special, _)  -> numLocos >= weight
+      Just (_, num) -> numLocos >= locos && num + remainingLocos >= weight - locos
+      Nothing -> False
 
 
 -------------------------------------------------------------------------------
