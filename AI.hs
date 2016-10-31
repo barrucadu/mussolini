@@ -115,13 +115,20 @@ suggestDraw ai
     | otherwise = DrawCards colour1 colour2
   where
     -- the needed colours
-    neededColours = sortOn snd [(c, i) | c <- [minBound..maxBound], let i = nInPlan c, i > 0]
+    neededColours = sortOn snd [ (c, i) | c <- [minBound..maxBound]
+                                        , let i = nInPlan c - nInHand c
+                                        , i > 0
+                               ]
 
     -- how many times a colour shows up in the plan
     nInPlan c = sum $ map (wval c) (plan ai) where
+      wval Special (_, _, l) = lweight l
       wval c (_, _, l)
-        | c `elem` lcolour l || Special `elem` lcolour l = lweight l
+        | c `elem` lcolour l || Special `elem` lcolour l = lweight l - llocos l
         | otherwise = 0
+
+    -- how many times a colour shows up in the hand
+    nInHand c = M.findWithDefault 0 c (hand ai)
 
     -- if a colour is on the table
     hasColour c i = M.findWithDefault 0 c (ontable ai) >= i
