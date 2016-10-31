@@ -130,7 +130,7 @@ suggest ai | drawLocomotive = DrawLocomotiveCard
     nInPlan c = sum $ map (wval c) (plan ai)
     wval c (_, _, l) | Just c `elem` lcolour l = lweight l
                      | otherwise = 0
-    hasColour c i = maybe False (>i) (M.lookup (Just c) $ ontable ai)
+    hasColour c i = maybe False (>=i) (M.lookup (Just c) $ ontable ai)
 
     -- if the number of remaining trains is below this point, don't
     -- draw a new ticket.
