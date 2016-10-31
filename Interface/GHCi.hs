@@ -59,20 +59,15 @@ aiPrintState ref = do
   s <- readIORef ref
   putStrLn "=== AI State ===\n"
 
-  case M.assocs (AI.hand s) of
-    (c:cs) -> do
-      putStr . showString "Hand: " . showCard c $ ""
-      mapM_ (\c' -> putStr . showString ", " . showCard c' $ "") cs
-    [] -> putStrLn "No hand!"
-
+  putStrLn "Cards:"
+  putStr "\tIn hand:  " >> printList showCard "none!" (M.toList $ AI.hand    s)
+  putStr "\tOn table: " >> printList showCard "none!" (M.toList $ AI.ontable s)
   putStrLn ""
 
-  case AI.pendingTickets s of
-    (t:ts) -> do
-      putStrLn . showString "Tickets: " . showTicket t $ ""
-      mapM_ (\t' -> putStrLn . showString "         " . showTicket t' $ "") ts
-    [] -> putStrLn "No tickets!"
-
+  putStrLn "Tickets:"
+  putStr "\tComplete: " >> printList showTicket "none!" (AI.completedTickets s)
+  putStr "\tPending:  " >> printList showTicket "none!" (AI.pendingTickets   s)
+  putStr "\tMissed:   " >> printList showTicket "none!" (AI.missedTickets    s)
   putStrLn ""
 
   case AI.plan s of
@@ -90,3 +85,9 @@ aiPrintState ref = do
     showColour Nothing  = showString "Locomotive"
     showColour (Just c) = shows c
     showAsideNum num = showString " (" . shows num . showString ")"
+
+    printList _ none [] = putStrLn none
+    printList f _ (x:xs) = do
+      putStr (f x "")
+      mapM_ (\v -> putStr . showString ", " . f v $ "") xs
+      putStr "\n"
