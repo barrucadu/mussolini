@@ -13,7 +13,7 @@ import qualified AI
 -- | GHCi interface to the AI.
 --
 -- @
--- (aiSuggest, aiPlan, aiReplan, aiDraw, aiDiscard, aiClaim, aiEnemyClaim, aiPrintState) <- newAI state
+-- (aiSuggest, aiPlan, aiReplan, aiSetCards, aiDraw, aiDiscard, aiClaim, aiEnemyClaim, aiPrintState) <- newAI state
 -- @
 --
 -- Then call the bound functions to interact with the game,
@@ -22,6 +22,7 @@ newAI :: (Enum a, Show a) => State a
   -> IO ( IO (Move a)
         , NonEmpty (a, a, Int) -> IO (NonEmpty (a, a, Int))
         , IO ()
+        , [Maybe Colour] -> IO ()
         , [Maybe Colour] -> IO ()
         , [Maybe Colour] -> IO ()
         , a -> a -> Maybe Colour -> IO ()
@@ -34,6 +35,7 @@ newAI s = do
   pure ( aiSuggest    ref
        , aiPlan       ref
        , aiReplan     ref
+       , aiSetCards   ref
        , aiDraw       ref
        , aiDiscard    ref
        , aiClaim      ref
@@ -58,6 +60,10 @@ aiPlan ref ts = do
 -- | Wrapper for 'AI.replanTickets'.
 aiReplan :: Enum a => IORef (State a) -> IO ()
 aiReplan ref = modifyIORef ref $ \s -> s { AI.plan = AI.replanTickets s }
+
+-- | Wrapper for 'AI.setCards'.
+aiSetCards :: IORef (State a) -> [Maybe Colour] -> IO ()
+aiSetCards ref colours = modifyIORef ref (AI.setCards colours)
 
 -- | Wrapper for 'AI.draw'.
 aiDraw :: IORef (State a) -> [Maybe Colour] -> IO ()
