@@ -2,6 +2,9 @@ module AI
   (-- * AI player state
     State(..)
   , newState
+    -- * AI
+  , Move(..)
+  , suggest
     -- * Plans
   , planTickets
   , replanTickets
@@ -16,9 +19,11 @@ module AI
 import Control.Arrow ((&&&))
 import Control.Monad (filterM)
 import Data.List (foldl', sortOn)
-import Data.List.NonEmpty (NonEmpty(..), toList)
+import Data.List.NonEmpty (NonEmpty(..))
+import qualified Data.List.NonEmpty as L
 import Data.Map (Map)
 import qualified Data.Map as M
+import Data.Maybe (listToMaybe)
 import Data.Ord (Down(..))
 
 import Graph
@@ -53,6 +58,85 @@ data State a = State
 -- | Construct a new game state.
 newState :: Int -> Graph a -> State a
 newState = State [] [] [] [] M.empty M.empty
+
+
+-------------------------------------------------------------------------------
+-- AI
+
+-- | A move that can be performed by a player.
+data Move a
+  = DrawLocomotiveCard
+  -- ^ Draw a single visible locomotive card.
+  | DrawCards (Maybe Colour) (Maybe Colour)
+  -- ^ Draw cards, possibly from the deck.
+  | ClaimRoute a a (Maybe Colour)
+  -- ^ Claim a route, if the cards are in hand.
+  | DrawTickets
+  -- ^ Draw new ticket cards.
+  deriving (Eq, Show)
+
+-- | Suggest the next move.
+suggest :: Enum a => State a -> Move a
+suggest ai | drawLocomotive = DrawLocomotiveCard
+           | claimRoute     = head planned
+           | drawTickets    = DrawTickets
+           | canBuild       = head routes
+           | otherwise      = DrawCards colour1 colour2
+  where
+    drawLocomotive = M.lookup Nothing (ontable ai) `notElem` [Nothing, Just 0]
+    claimRoute     = not (null planned)
+    drawTickets    = null (pendingTickets ai) &&
+                     remainingTrains ai > minRemainingTrains &&
+                     length (missedTickets ai) < maxMissedTickets
+    canBuild       = not (null routes)
+
+    -- routes that can be claimed.
+    planned =
+      [ ClaimRoute from to colour | (from, to, label) <- plan ai
+                                  , colour <- lcolour label
+                                  , canClaim colour (llocos label) (lweight label)
+      ]
+    routes =
+      [ ClaimRoute from to colour | (from, to, label) <- toList (world ai)
+                                  , colour <- lcolour label
+                                  , canClaim colour (llocos label) (lweight label)
+      ]
+
+    canClaim colour locos weight =
+      let numLocos = M.findWithDefault 0 Nothing (hand ai)
+          hand' = M.update (\n -> if n <= locos then Nothing else Just (n-locos)) Nothing (hand ai)
+          remainingLocos = M.findWithDefault 0 Nothing hand'
+          trains = case colour of
+            Just col -> Just (colour, M.findWithDefault 0 colour hand')
+            Nothing  -> listToMaybe . sortOn (Down . snd) $ M.assocs hand'
+      in case trains of
+        Just (Just col, num) -> numLocos >= locos && num + remainingLocos >= weight - locos
+        Just (Nothing, num)  -> numLocos >= weight
+        Nothing -> False
+
+    -- the colours to claim, favour taking pairs.
+    (colour1, colour2) = case filter (\(c,_) -> hasColour c 1) neededColours of
+      ((colour, n):rest)
+        | n >= 2 && hasColour colour 2 -> (Just colour, Just colour)
+        | otherwise -> (Just colour, fst <$> listToMaybe rest)
+      [] ->
+        let pairs  = filter ((>=2) . snd) $ M.assocs (ontable ai)
+            colour = listToMaybe pairs >>= fst
+        in (colour, colour)
+
+    neededColours = sortOn snd [(c, i) | c <- [minBound..maxBound], let i = nInPlan c, i > 0]
+    nInPlan c = sum $ map (wval c) (plan ai)
+    wval c (_, _, l) | Just c `elem` lcolour l = lweight l
+                     | otherwise = 0
+    hasColour c i = maybe False (>i) (M.lookup (Just c) $ ontable ai)
+
+    -- if the number of remaining trains is below this point, don't
+    -- draw a new ticket.
+    minRemainingTrains = 10
+
+    -- if the number of missed tickets is greater than this point,
+    -- don't draw a new ticket.
+    maxMissedTickets = 3
 
 
 -------------------------------------------------------------------------------
@@ -93,7 +177,7 @@ planTickets' :: Enum a
   -> [(NonEmpty (a, a, Int), [(a, a, Label)])]
 planTickets' ai = map (\(t:ts) -> (t:|ts, fst $ doplan (t:ts))) . powerset where
   -- the list monad is a kind of magic
-  powerset = init . filterM (const [True, False]) . Data.List.NonEmpty.toList
+  powerset = init . filterM (const [True, False]) . L.toList
 
   -- the mandatory tickets are taken from the AI state, in reverse
   -- order. To take advantage of this, have the final element of the
@@ -121,9 +205,8 @@ planTickets' ai = map (\(t:ts) -> (t:|ts, fst $ doplan (t:ts))) . powerset where
 
 -- | Check if an edge is in a plan.
 inPlan :: Enum a => a -> a -> [(a, a, label)] -> Bool
-inPlan a1 b1 = go where
-  go ((a2, b2, _):xs) =
-    (fromEnum a2, fromEnum b2) `elem` cmps || go xs
+inPlan a1 b1 = any go where
+  go (a2, b2, _) = (fromEnum a2, fromEnum b2) `elem` cmps
   cmps = [(fromEnum a1, fromEnum b1), (fromEnum b1, fromEnum a1)]
 
 -------------------------------------------------------------------------------
