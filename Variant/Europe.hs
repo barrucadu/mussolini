@@ -1,5 +1,6 @@
 module Variant.Europe where
 
+import AI (State, newState)
 import Graph
 
 data Place
@@ -51,6 +52,10 @@ data Place
   | Zagrab
   | Zurich
   deriving (Eq, Ord, Read, Show, Enum, Bounded)
+
+-- | Players start with 45 trains, and the 'europe' map.
+europeState :: State Place
+europeState = newState 45 europe
 
 europe :: Graph Place
 europe = fromList europeEdges
