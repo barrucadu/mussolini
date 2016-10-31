@@ -16,7 +16,8 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Graph
+  exposed-modules:     AI
+                     , Graph
                      , Variant.Europe
   -- other-modules:       
   -- other-extensions:    

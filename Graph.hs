@@ -4,9 +4,11 @@ module Graph
   , Colour(..)
   , Label(..)
   , fromList
+  , toList
   -- * Edges
   , edgeFromTo
   , claimEdge
+  , claimedEdges
   , loseEdge
   -- * Paths
   , shortestPath
@@ -71,6 +73,10 @@ fromList weights = Graph (G.mkGraph nodes edges) where
   edges = [(fromEnum n1, fromEnum n2, l) | (n1, n2, l) <- weights, not . null $ lcolour l] ++
           [(fromEnum n2, fromEnum n1, l) | (n1, n2, l) <- weights, not . null $ lcolour l]
 
+-- | Convert a graph back into a list of edges.
+toList :: Enum a => Graph a -> [(a, a, Label)]
+toList gr = [(toEnum n1, toEnum n2, l) | (n1, n2, l) <- G.labEdges (graph gr), n1 < n2]
+
 
 -------------------------------------------------------------------------------
 -- Edges
@@ -90,6 +96,10 @@ edgeFromTo from to gr = listToMaybe . mapMaybe go $ G.lsuc (graph gr) (fromEnum 
 claimEdge :: Enum a => a -> a -> Maybe Colour -> Graph a -> Graph a
 claimEdge = modlabel claim where
   claim l = Just l { lweight = 0 }
+
+-- | Get the list of edges we own.
+claimedEdges :: Enum a => Graph a -> [(a, a, Label)]
+claimedEdges = filter (\(_, _, l) -> lweight l == 0) . toList
 
 -- | Remove an edge from the graph. This is a simple way of indicating
 -- that someone else has claimed it.
@@ -152,8 +162,7 @@ combinelbls f lbl1 lbl2 = Label
 
 -- | Construct a new graph by mapping/filtering the edges.
 modgraph :: Enum a => ((a, a, Label) -> Maybe (a, a, Label)) -> Graph a -> Graph a
-modgraph f gr = fromList (mapMaybe f edges) where
-  edges = [(toEnum n1, toEnum n2, l) | (n1, n2, l) <- G.labEdges (graph gr), n1 < n2]
+modgraph f = fromList . mapMaybe f . toList
 
 -- | Modify a single edge in a graph.
 modlabel :: Enum a => (Label -> Maybe Label) -> a -> a -> Maybe Colour -> Graph a -> Graph a
