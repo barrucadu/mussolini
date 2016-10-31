@@ -11,7 +11,7 @@ data Place
   | Brest
   | Brindisi
   | Bruxelles
-  | Bucaresti
+  | Bucuresti
   | Budapest
   | Cadiz
   | Constantinople
@@ -92,11 +92,11 @@ europeEdges =
   , (Bruxelles, Frankfurt, Label [Just Blue] 0 2)
   , (Bruxelles, Paris,     Label [Just Red, Just Yellow] 0 2)
 
-  , (Bucaresti, Budapest,       Label [Nothing] 0 4) -- tunnel
-  , (Bucaresti, Constantinople, Label [Just Yellow] 0 3)
-  , (Bucaresti, Kyiv,           Label [Nothing] 0 4)
-  , (Bucaresti, Sevastopol,     Label [Just White] 0 4)
-  , (Bucaresti, Sofia,          Label [Nothing] 0 2) -- tunnel
+  , (Bucuresti, Budapest,       Label [Nothing] 0 4) -- tunnel
+  , (Bucuresti, Constantinople, Label [Just Yellow] 0 3)
+  , (Bucuresti, Kyiv,           Label [Nothing] 0 4)
+  , (Bucuresti, Sevastopol,     Label [Just White] 0 4)
+  , (Bucuresti, Sofia,          Label [Nothing] 0 2) -- tunnel
 
   , (Budapest, Kyiv,     Label [Nothing] 0 6) -- tunnel
   , (Budapest, Sarajevo, Label [Just Pink] 0 3)
