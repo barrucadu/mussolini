@@ -16,7 +16,9 @@ module AI
   , draw
   , discard
   , claim
+  , claimSingle
   , enemyClaim
+  , enemyClaimSingle
   ) where
 
 import Control.Monad (filterM)
@@ -287,6 +289,18 @@ claim from to colour ai = updateTickets ai
   , world = claimEdge from to colour (world ai)
   }
 
+-- | Helper for 'claim' for the case where there is only a single
+-- (remaining) route between the two places.
+--
+-- If there are multiple colours, this does not modify the state of
+-- the world.
+claimSingle :: Enum a => a -> a -> State a -> State a
+claimSingle from to ai = case colour of
+    (col:_) -> claim from to col ai
+    _ -> ai
+  where
+    colour = maybe [] lcolour $ edgeFromTo from to (world ai)
+
 -- | Have an enemy claim a route. This checks if any tickets have been
 -- blocked, removes the route from the plan, and recomputes the plan
 -- if necessary.
@@ -299,3 +313,15 @@ enemyClaim from to colour ai = updateTickets ai
     newWorld = loseEdge from to colour (world ai)
     newPlan | inPlan from to (plan ai) = replanTickets ai { world = newWorld }
             | otherwise = plan ai
+
+-- | Helper for 'enemyClaim' for the case where there is only a single
+-- (remaining) route between the two places.
+--
+-- If there are multiple colours, this does not modify the state of
+-- the world.
+enemyClaimSingle :: Enum a => a -> a -> State a -> State a
+enemyClaimSingle from to ai = case colour of
+    (col:_) -> enemyClaim from to col ai
+    _ -> ai
+  where
+    colour = maybe [] lcolour $ edgeFromTo from to (world ai)
