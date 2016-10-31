@@ -1,7 +1,7 @@
-module Interface.GHCi (newAI) where
+module Interface.GHCi (NonEmpty(..), newAI) where
 
 import Data.IORef (IORef, newIORef, modifyIORef, readIORef, writeIORef)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as L
 import qualified Data.Map as M
 import Text.Show (shows, showString)
