@@ -117,10 +117,16 @@ loseEdge from to colour = modlabel lose from to colour where
 
 -- | Get the shortest path between two nodes, if one exists. If two
 -- paths have the same weight, but one has fewer edges, that one will
--- be preferred.
+-- be preferred. Routes which are already owned are not included, so
+-- the \"path\" may be disconnected.
 shortestPath :: Enum a => a -> a -> Graph a -> [(a, a, Label)]
 shortestPath from to gr = go $ G.sp (fromEnum from) (fromEnum to) (graph gr2) where
-  go (n1:n2:rest) = (toEnum n1, toEnum n2, edgelbl n1 n2) : go (n2:rest)
+  go (n1:n2:rest) =
+    let lbl = edgelbl n1 n2
+        therest = go (n2:rest)
+    in if lweight lbl == 0
+       then therest
+       else (toEnum n1, toEnum n2, lbl) : therest
   go _ = []
 
   -- this use of 'fromJust' is safe, because 'G.sp' only produces a

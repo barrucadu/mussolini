@@ -100,6 +100,7 @@ suggest ai | drawLocomotive = DrawLocomotiveCard
     routes =
       [ ClaimRoute from to colour | (from, to, label) <- toList (world ai)
                                   , colour <- lcolour label
+                                  , lweight label > 0
                                   , canClaim colour (llocos label) (lweight label)
       ]
 
