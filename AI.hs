@@ -6,6 +6,7 @@ module AI
   , Move(..)
   , suggest
     -- * Plans
+  , Ticket(..)
   , planTickets
   , replanTickets
   , inPlan
@@ -33,12 +34,12 @@ import Graph
 -- AI player state
 
 data State a = State
-  { completedTickets :: [(a, a, Int)]
+  { completedTickets :: [Ticket a]
   -- ^ Successfully completed tickets
-  , missedTickets :: [(a, a, Int)]
+  , missedTickets :: [Ticket a]
   -- ^ Tickets which are impossible to complete (want to keep this
   -- list small!)
-  , pendingTickets :: [(a, a, Int)]
+  , pendingTickets :: [Ticket a]
   -- ^ Tickets still being built.
   , plan :: [(a, a, Label)]
   -- ^ Planned edges to build. In the case of parallel edges, any one
@@ -144,15 +145,19 @@ suggest ai | drawLocomotive = DrawLocomotiveCard
 -------------------------------------------------------------------------------
 -- Plans
 
+-- | A 'Ticket' is a pair of destinations and a point value.
+data Ticket a = Ticket { tfrom :: a, tto :: a, tvalue :: Int }
+  deriving (Eq, Show)
+
 -- | Given a list of tickets, plan a rail network and decide which to
 -- keep.
 planTickets :: Enum a
-  => NonEmpty (a, a, Int)
+  => NonEmpty (Ticket a)
   -- ^ The new tickets: at least one MUST be kept.
   -> State a
   -- ^ The AI state. The pending tickets are incorporated into the new
   -- plan.
-  -> (NonEmpty (a, a, Int), [(a, a, Label)])
+  -> (NonEmpty (Ticket a), [(a, a, Label)])
 planTickets tickets ai = head . sortOn cmp $ planTickets' ai tickets where
   cmp = (tclass &&& Down . pathScore) . snd
 
@@ -175,8 +180,8 @@ replanTickets ai = case pendingTickets ai of
 -- orderings of the tickets should be considered.
 planTickets' :: Enum a
   => State a
-  -> NonEmpty (a, a, Int)
-  -> [(NonEmpty (a, a, Int), [(a, a, Label)])]
+  -> NonEmpty (Ticket a)
+  -> [(NonEmpty (Ticket a), [(a, a, Label)])]
 planTickets' ai = map (\(t:ts) -> (t:|ts, fst $ doplan (t:ts))) . powerset where
   -- the list monad is a kind of magic
   powerset = init . filterM (const [True, False]) . L.toList
@@ -196,8 +201,8 @@ planTickets' ai = map (\(t:ts) -> (t:|ts, fst $ doplan (t:ts))) . powerset where
   -- the network.
   doplan ts =
     let base = if null ts then ([], world ai) else plan0
-        stepPlan (p, w) (destA, destB, _) =
-          let path = shortestPath destA destB w
+        stepPlan (p, w) t =
+          let path = shortestPath (tfrom t) (tto t) w
               p' = [ (a, b, l) | (a, b, l) <- path
                                , not $ inPlan a b p
                    ]

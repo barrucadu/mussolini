@@ -6,7 +6,7 @@ import qualified Data.List.NonEmpty as L
 import qualified Data.Map as M
 import Text.Show (shows, showString)
 
-import AI (State, Move)
+import AI (Move, State, Ticket(..))
 import Graph (Colour, Label(lweight))
 import qualified AI
 
@@ -20,7 +20,7 @@ import qualified AI
 -- automatically updating the game state.
 newAI :: (Enum a, Show a) => State a
   -> IO ( IO (Move a)
-        , NonEmpty (a, a, Int) -> IO (NonEmpty (a, a, Int))
+        , NonEmpty (Ticket a) -> IO (NonEmpty (Ticket a))
         , IO ()
         , [Maybe Colour] -> IO ()
         , [Maybe Colour] -> IO ()
@@ -48,7 +48,7 @@ aiSuggest :: Enum a => IORef (State a) -> IO (Move a)
 aiSuggest ref = AI.suggest <$> readIORef ref
 
 -- | Wrapper for 'AI.planTickets'.
-aiPlan :: Enum a => IORef (State a) -> NonEmpty (a, a, Int) -> IO (NonEmpty (a, a, Int))
+aiPlan :: Enum a => IORef (State a) -> NonEmpty (Ticket a) -> IO (NonEmpty (Ticket a))
 aiPlan ref ts = do
   s <- readIORef ref
   let (keep, plan) = AI.planTickets ts s
@@ -111,7 +111,7 @@ aiPrintState ref = do
 
   where
     showCard (colour, num) = showColour colour . showAsideNum num
-    showTicket (from, to, value) =
+    showTicket (Ticket from to value) =
       shows from . showString " -> " . shows to . showAsideNum value
     showPlanItem (from, to, label) =
       shows from . showString " -> " . shows to . showAsideNum (lweight label)
