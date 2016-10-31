@@ -117,21 +117,19 @@ suggest ai | drawLocomotive = DrawLocomotiveCard
         Just (Nothing, _)  -> numLocos >= weight
         Nothing -> False
 
-    -- the colours to claim, favour taking pairs.
-    (colour1, colour2) = case filter (\(c,_) -> hasColour c 1) neededColours of
-      ((colour, n):rest)
-        | n >= 2 && hasColour colour 2 -> (Just colour, Just colour)
-        | otherwise -> (Just colour, fst <$> listToMaybe rest)
-      [] ->
-        let pairs  = filter ((>=2) . snd) $ M.assocs (ontable ai)
-            colour = listToMaybe pairs >>= fst
-        in (colour, colour)
-
-    neededColours = sortOn snd [(c, i) | c <- [minBound..maxBound], let i = nInPlan c, i > 0]
-    nInPlan c = sum $ map (wval c) (plan ai)
-    wval c (_, _, l) | Just c `elem` lcolour l = lweight l
-                     | otherwise = 0
-    hasColour c i = maybe False (>=i) (M.lookup (Just c) $ ontable ai)
+    -- the colours to claim.
+    (colour1, colour2) =
+      let neededColours = sortOn snd [(c, i) | c <- [minBound..maxBound], let i = nInPlan c, i > 0]
+          nInPlan c = sum $ map (wval c) (plan ai)
+          wval c (_, _, l)
+            | Just c `elem` lcolour l || Nothing `elem` lcolour l = lweight l
+            | otherwise = 0
+          hasColour c i = maybe False (>=i) (M.lookup (Just c) $ ontable ai)
+      in case filter (\(c,_) -> hasColour c 1) neededColours of
+        ((colour, n):rest)
+          | n >= 2 && hasColour colour 2 -> (Just colour, Just colour)
+          | otherwise -> (Just colour, fst <$> listToMaybe rest)
+        [] -> (Nothing, Nothing)
 
     -- if the number of remaining trains is below this point, don't
     -- draw a new ticket.
