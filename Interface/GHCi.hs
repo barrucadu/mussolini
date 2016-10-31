@@ -7,7 +7,7 @@ import qualified Data.Map as M
 import Text.Show (shows, showString)
 
 import AI (Move, State, Ticket(..))
-import Graph (Colour, Label(lweight))
+import Graph (Colour(Special), Label(lweight))
 import qualified AI
 
 -- | GHCi interface to the AI.
@@ -82,8 +82,8 @@ aiPrintState ref = do
       shows from . showString " -> " . shows to . showAsideNum value
     showPlanItem (from, to, label) =
       shows from . showString " -> " . shows to . showAsideNum (lweight label)
-    showColour Nothing  = showString "Locomotive"
-    showColour (Just c) = shows c
+    showColour Special = showString "Locomotive"
+    showColour c = shows c
     showAsideNum num = showString " (" . shows num . showString ")"
 
     printList _ none [] = putStrLn none

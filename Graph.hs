@@ -30,15 +30,15 @@ import Data.Maybe (fromJust, listToMaybe, mapMaybe)
 newtype Graph a = Graph { graph :: G.Gr a Label }
   deriving (Eq, Show)
 
--- | All the possible route colours.
-data Colour = Pink | White | Blue | Yellow | Orange | Black | Red | Green
+-- | All the possible route and card colours. The @Special@ colour
+-- refers to both locomotives and grey routes.
+data Colour = Pink | White | Blue | Yellow | Orange | Black | Red | Green | Special
   deriving (Eq, Ord, Read, Show, Enum, Bounded)
 
 -- | A label describes a single-hop route between two destinations.
 data Label = Label
-    { lcolour :: [Maybe Colour]
-      -- ^ The colours of the route. @Nothing@ indicates a \"grey\"
-      -- route: any colour can be used to build it.
+    { lcolour :: [Colour]
+      -- ^ The colours of the route.
     , llocos  :: Int
       -- ^ The number of required locomotives.
     , lweight :: Int
@@ -93,7 +93,7 @@ edgeFromTo from to gr = listToMaybe . mapMaybe go $ G.lsuc (graph gr) (fromEnum 
 -- claiming one edge will claim all the parallel ones. However, the
 -- game rules forbid buying multiple parallel edges, so this may not
 -- be a problem in practice.
-claimEdge :: Enum a => a -> a -> Maybe Colour -> Graph a -> Graph a
+claimEdge :: Enum a => a -> a -> Colour -> Graph a -> Graph a
 claimEdge = modlabel claim where
   claim l = Just l { lweight = 0 }
 
@@ -105,7 +105,7 @@ claimedEdges = filter (\(_, _, l) -> lweight l == 0) . toList
 -- that someone else has claimed it. If the edge has multiple colours,
 -- only the given colour is removed; otherwise the edge is removed
 -- entirely.
-loseEdge :: Enum a => a -> a -> Maybe Colour -> Graph a -> Graph a
+loseEdge :: Enum a => a -> a -> Colour -> Graph a -> Graph a
 loseEdge from to colour = modlabel lose from to colour where
   lose l = case lcolour l of
     [_] -> Nothing
@@ -182,7 +182,7 @@ modgraph :: Enum a => ((a, a, Label) -> Maybe (a, a, Label)) -> Graph a -> Graph
 modgraph f = fromList . mapMaybe f . toList
 
 -- | Modify a single edge in a graph.
-modlabel :: Enum a => (Label -> Maybe Label) -> a -> a -> Maybe Colour -> Graph a -> Graph a
+modlabel :: Enum a => (Label -> Maybe Label) -> a -> a -> Colour -> Graph a -> Graph a
 modlabel f from to colour = modgraph go where
   go (n1, n2, l)
     | colour `elem` lcolour l && (check n1 n2 || check n2 n1)

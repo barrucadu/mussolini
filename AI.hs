@@ -44,10 +44,10 @@ data State a = State
   , plan :: [(a, a, Label)]
   -- ^ Planned edges to build. In the case of parallel edges, any one
   -- is acceptable.
-  , hand :: Map (Maybe Colour) Int
-  -- ^ The current hand. @Nothing@ indicates a locomotive.
-  , ontable :: Map (Maybe Colour) Int
-  -- ^ The currently-visible cards. @Nothing@ indicates a locomotive.
+  , hand :: Map Colour Int
+  -- ^ The current hand.
+  , ontable :: Map Colour Int
+  -- ^ The currently-visible cards.
   , remainingTrains :: Int
   -- ^ The number of trains remaining to build with, used to discard
   -- plans which are too close for comfort.
@@ -71,7 +71,7 @@ data Move a
   -- ^ Draw a single visible locomotive card.
   | DrawCards (Maybe Colour) (Maybe Colour)
   -- ^ Draw cards, possibly from the deck.
-  | ClaimRoute a a (Maybe Colour)
+  | ClaimRoute a a Colour
   -- ^ Claim a route, if the cards are in hand.
   | DrawTickets
   -- ^ Draw new ticket cards.
@@ -85,7 +85,7 @@ suggest ai | drawLocomotive = DrawLocomotiveCard
            | shouldBuild    = head routes
            | otherwise      = DrawCards colour1 colour2
   where
-    drawLocomotive = M.lookup Nothing (ontable ai) `notElem` [Nothing, Just 0]
+    drawLocomotive = M.findWithDefault 0 Special (ontable ai) > 0
     claimRoute     = not (null planned)
     drawTickets    = null (pendingTickets ai) &&
                      remainingTrains ai > minRemainingTrains &&
@@ -106,15 +106,15 @@ suggest ai | drawLocomotive = DrawLocomotiveCard
       ]
 
     canClaim colour locos weight =
-      let numLocos = M.findWithDefault 0 Nothing (hand ai)
-          hand' = M.update (\n -> if n <= locos then Nothing else Just (n-locos)) Nothing (hand ai)
-          remainingLocos = M.findWithDefault 0 Nothing hand'
-          trains = case colour of
-            Just _  -> Just (colour, M.findWithDefault 0 colour hand')
-            Nothing -> listToMaybe . sortOn (Down . snd) $ M.assocs hand'
+      let numLocos = M.findWithDefault 0 Special (hand ai)
+          hand' = M.update (\n -> if n <= locos then Nothing else Just (n-locos)) Special (hand ai)
+          remainingLocos = M.findWithDefault 0 Special hand'
+          trains
+            | colour == Special = listToMaybe . sortOn (Down . snd) $ M.assocs hand'
+            | otherwise = Just (colour, M.findWithDefault 0 colour hand')
       in case trains of
-        Just (Just _, num) -> numLocos >= locos && num + remainingLocos >= weight - locos
-        Just (Nothing, _)  -> numLocos >= weight
+        Just (Special, _)  -> numLocos >= weight
+        Just (_, num) -> numLocos >= locos && num + remainingLocos >= weight - locos
         Nothing -> False
 
     -- the colours to claim.
@@ -122,9 +122,9 @@ suggest ai | drawLocomotive = DrawLocomotiveCard
       let neededColours = sortOn snd [(c, i) | c <- [minBound..maxBound], let i = nInPlan c, i > 0]
           nInPlan c = sum $ map (wval c) (plan ai)
           wval c (_, _, l)
-            | Just c `elem` lcolour l || Nothing `elem` lcolour l = lweight l
+            | c `elem` lcolour l || Special `elem` lcolour l = lweight l
             | otherwise = 0
-          hasColour c i = maybe False (>=i) (M.lookup (Just c) $ ontable ai)
+          hasColour c i = M.findWithDefault 0 c (ontable ai) >= i
       in case filter (\(c,_) -> hasColour c 1) neededColours of
         ((colour, n):rest)
           | n >= 2 && hasColour colour 2 -> (Just colour, Just colour)
@@ -258,18 +258,18 @@ inPlan a1 b1 = any go where
 -- Actions
 
 -- | Set the visible cards on the table.
-setCards :: [Maybe Colour] -> State a -> State a
+setCards :: [Colour] -> State a -> State a
 setCards colours ai = ai { ontable = M.fromList [(c, count c) | c <- colours] } where
   count c = length $ filter (==c) colours
 
 -- | Draw new cards.
-draw :: [Maybe Colour] -> State a -> State a
+draw :: [Colour] -> State a -> State a
 draw cards ai = ai { hand = foldl' (flip $ M.alter go) (hand ai) cards } where
   go (Just i) = Just (i+1)
   go Nothing  = Just 1
 
 -- | Discard cards.
-discard :: [Maybe Colour] -> State a -> State a
+discard :: [Colour] -> State a -> State a
 discard cards ai = ai { hand = foldl' (flip $ M.update go) (hand ai) cards } where
   go i | i <= 1    = Nothing
        | otherwise = Just (i-1)
@@ -281,7 +281,7 @@ discard cards ai = ai { hand = foldl' (flip $ M.update go) (hand ai) cards } whe
 -- Make sure to 'discard' the needed cards! This function doesn't do
 -- so automatically, as locomotives give rise to multiple ways to pay
 -- for the same route in some cases.
-claim :: Enum a => a -> a -> Maybe Colour -> State a -> State a
+claim :: Enum a => a -> a -> Colour -> State a -> State a
 claim from to colour ai = updateTickets ai
   { plan  = filter (not . inPlan from to . (:[])) (plan ai)
   , world = claimEdge from to colour (world ai)
@@ -290,7 +290,7 @@ claim from to colour ai = updateTickets ai
 -- | Have an enemy claim a route. This checks if any tickets have been
 -- blocked, removes the route from the plan, and recomputes the plan
 -- if necessary.
-enemyClaim :: Enum a => a -> a -> Maybe Colour -> State a -> State a
+enemyClaim :: Enum a => a -> a -> Colour -> State a -> State a
 enemyClaim from to colour ai = updateTickets ai
     { plan  = newPlan
     , world = newWorld

@@ -57,134 +57,134 @@ europe = fromList europeEdges
 
 europeEdges :: [(Place, Place, Label)]
 europeEdges =
-  [ (Amsterdam, Bruxelles, Label [Just Black] 0 1)
-  , (Amsterdam, Essen,     Label [Just Yellow] 0 3)
-  , (Amsterdam, Frankfurt, Label [Just White] 0 2)
-  , (Amsterdam, London,    Label [Nothing] 2 2)
+  [ (Amsterdam, Bruxelles, Label [Black] 0 1)
+  , (Amsterdam, Essen,     Label [Yellow] 0 3)
+  , (Amsterdam, Frankfurt, Label [White] 0 2)
+  , (Amsterdam, London,    Label [Special] 2 2)
 
-  , (Angora, Constantinople, Label [Nothing] 0 2) -- tunnel
-  , (Angora, Erzurum,        Label [Just Black] 0 3)
-  , (Angora, Smyrna,         Label [Just Orange] 0 3) -- tunnel
+  , (Angora, Constantinople, Label [Special] 0 2) -- tunnel
+  , (Angora, Erzurum,        Label [Black] 0 3)
+  , (Angora, Smyrna,         Label [Orange] 0 3) -- tunnel
 
-  , (Athina, Brindisi, Label [Nothing] 1 4)
-  , (Athina, Sarajevo, Label [Just Green] 0 4)
-  , (Athina, Smyrna,   Label [Nothing] 1 2)
-  , (Athina, Sofia,    Label [Just Pink] 0 3)
+  , (Athina, Brindisi, Label [Special] 1 4)
+  , (Athina, Sarajevo, Label [Green] 0 4)
+  , (Athina, Smyrna,   Label [Special] 1 2)
+  , (Athina, Sofia,    Label [Pink] 0 3)
 
-  , (Barcelona, Madrid,    Label [Just Yellow] 0 2)
-  , (Barcelona, Marseille, Label [Nothing] 0 4)
-  , (Barcelona, Pamplona,  Label [Nothing] 0 2) -- tunnel
+  , (Barcelona, Madrid,    Label [Yellow] 0 2)
+  , (Barcelona, Marseille, Label [Special] 0 4)
+  , (Barcelona, Pamplona,  Label [Special] 0 2) -- tunnel
 
-  , (Berlin, Essen,     Label [Just Blue] 0 2)
-  , (Berlin, Danzig,    Label [Nothing] 0 4)
-  , (Berlin, Frankfurt, Label [Just Black, Just Red] 0 3)
-  , (Berlin, Warszawa,  Label [Just Pink, Just Yellow] 0 4)
-  , (Berlin, Wien,      Label [Just Green] 0 3)
+  , (Berlin, Essen,     Label [Blue] 0 2)
+  , (Berlin, Danzig,    Label [Special] 0 4)
+  , (Berlin, Frankfurt, Label [Black, Red] 0 3)
+  , (Berlin, Warszawa,  Label [Pink, Yellow] 0 4)
+  , (Berlin, Wien,      Label [Green] 0 3)
 
-  , (Brest, Dieppe,   Label [Just Orange] 0 2)
-  , (Brest, Paris,    Label [Just Black] 0 3)
-  , (Brest, Pamplona, Label [Just Pink] 0 4)
+  , (Brest, Dieppe,   Label [Orange] 0 2)
+  , (Brest, Paris,    Label [Black] 0 3)
+  , (Brest, Pamplona, Label [Pink] 0 4)
 
-  , (Brindisi, Palermo, Label [Nothing] 1 3)
-  , (Brindisi, Roma,    Label [Just White] 0 2)
+  , (Brindisi, Palermo, Label [Special] 1 3)
+  , (Brindisi, Roma,    Label [White] 0 2)
 
-  , (Bruxelles, Dieppe,    Label [Just Green] 0 2)
-  , (Bruxelles, Frankfurt, Label [Just Blue] 0 2)
-  , (Bruxelles, Paris,     Label [Just Red, Just Yellow] 0 2)
+  , (Bruxelles, Dieppe,    Label [Green] 0 2)
+  , (Bruxelles, Frankfurt, Label [Blue] 0 2)
+  , (Bruxelles, Paris,     Label [Red, Yellow] 0 2)
 
-  , (Bucuresti, Budapest,       Label [Nothing] 0 4) -- tunnel
-  , (Bucuresti, Constantinople, Label [Just Yellow] 0 3)
-  , (Bucuresti, Kyiv,           Label [Nothing] 0 4)
-  , (Bucuresti, Sevastopol,     Label [Just White] 0 4)
-  , (Bucuresti, Sofia,          Label [Nothing] 0 2) -- tunnel
+  , (Bucuresti, Budapest,       Label [Special] 0 4) -- tunnel
+  , (Bucuresti, Constantinople, Label [Yellow] 0 3)
+  , (Bucuresti, Kyiv,           Label [Special] 0 4)
+  , (Bucuresti, Sevastopol,     Label [White] 0 4)
+  , (Bucuresti, Sofia,          Label [Special] 0 2) -- tunnel
 
-  , (Budapest, Kyiv,     Label [Nothing] 0 6) -- tunnel
-  , (Budapest, Sarajevo, Label [Just Pink] 0 3)
-  , (Budapest, Wien,     Label [Just Red, Just White] 0 1)
-  , (Budapest, Zagrab,   Label [Just Orange] 0 2)
+  , (Budapest, Kyiv,     Label [Special] 0 6) -- tunnel
+  , (Budapest, Sarajevo, Label [Pink] 0 3)
+  , (Budapest, Wien,     Label [Red, White] 0 1)
+  , (Budapest, Zagrab,   Label [Orange] 0 2)
 
-  , (Cadiz, Lisboa, Label [Just Blue] 0 2)
-  , (Cadiz, Madrid, Label [Just Orange] 0 3)
+  , (Cadiz, Lisboa, Label [Blue] 0 2)
+  , (Cadiz, Madrid, Label [Orange] 0 3)
 
-  , (Constantinople, Sevastopol, Label [Nothing] 2 4)
-  , (Constantinople, Smyrna,     Label [Nothing] 0 2) -- tunnel
-  , (Constantinople, Sofia,      Label [Just Blue] 0 3)
+  , (Constantinople, Sevastopol, Label [Special] 2 4)
+  , (Constantinople, Smyrna,     Label [Special] 0 2) -- tunnel
+  , (Constantinople, Sofia,      Label [Blue] 0 3)
 
-  , (Danzig, Riga,     Label [Just Black] 0 3)
-  , (Danzig, Warszawa, Label [Nothing] 0 2)
+  , (Danzig, Riga,     Label [Black] 0 3)
+  , (Danzig, Warszawa, Label [Special] 0 2)
 
-  , (Dieppe, London, Label [Nothing, Nothing] 1 2)
-  , (Dieppe, Paris,  Label [Just Pink] 0 1)
+  , (Dieppe, London, Label [Special, Special] 1 2)
+  , (Dieppe, Paris,  Label [Pink] 0 1)
 
-  , (Edinburgh, London, Label [Just Black, Just Orange] 0 4)
+  , (Edinburgh, London, Label [Black, Orange] 0 4)
 
-  , (Erzurum, Sevastopol, Label [Nothing] 2 4)
-  , (Erzurum, Sochi,      Label [Just Red] 0 3) -- tunnel
+  , (Erzurum, Sevastopol, Label [Special] 2 4)
+  , (Erzurum, Sochi,      Label [Red] 0 3) -- tunnel
 
-  , (Essen, Frankfurt, Label [Just Green] 0 2)
-  , (Essen, Kobenhavn, Label [Nothing, Nothing] 1 3)
+  , (Essen, Frankfurt, Label [Green] 0 2)
+  , (Essen, Kobenhavn, Label [Special, Special] 1 3)
 
-  , (Frankfurt, Munchen, Label [Just Pink] 0 2)
-  , (Frankfurt, Paris,   Label [Just Orange, Just White] 0 3)
+  , (Frankfurt, Munchen, Label [Pink] 0 2)
+  , (Frankfurt, Paris,   Label [Orange, White] 0 3)
 
-  , (Kharkov, Kyiv,   Label [Nothing] 0 4)
-  , (Kharkov, Moskva, Label [Nothing] 0 4)
-  , (Kharkov, Rostov, Label [Just Green] 0 2)
+  , (Kharkov, Kyiv,   Label [Special] 0 4)
+  , (Kharkov, Moskva, Label [Special] 0 4)
+  , (Kharkov, Rostov, Label [Green] 0 2)
 
-  , (Kobenhavn, Stockholm, Label [Just White, Just Yellow] 0 3)
+  , (Kobenhavn, Stockholm, Label [White, Yellow] 0 3)
 
-  , (Kyiv, Warszawa, Label [Nothing] 0 4)
-  , (Kyiv, Wilno,    Label [Nothing] 0 2)
-  , (Kyiv, Smolensk, Label [Just Red] 0 3)
+  , (Kyiv, Warszawa, Label [Special] 0 4)
+  , (Kyiv, Wilno,    Label [Special] 0 2)
+  , (Kyiv, Smolensk, Label [Red] 0 3)
 
-  , (Lisboa, Madrid, Label [Just Pink] 0 3)
+  , (Lisboa, Madrid, Label [Pink] 0 3)
 
   -- London
 
-  , (Madrid, Pamplona, Label [Just Black, Just White] 0 3) -- tunnel
+  , (Madrid, Pamplona, Label [Black, White] 0 3) -- tunnel
 
-  , (Marseille, Pamplona, Label [Just Red] 0 4)
-  , (Marseille, Paris,    Label [Nothing] 0 4)
-  , (Marseille, Roma,     Label [Nothing] 0 4) -- tunnel
-  , (Marseille, Zurich,   Label [Just Pink] 0 2) -- tunnel
+  , (Marseille, Pamplona, Label [Red] 0 4)
+  , (Marseille, Paris,    Label [Special] 0 4)
+  , (Marseille, Roma,     Label [Special] 0 4) -- tunnel
+  , (Marseille, Zurich,   Label [Pink] 0 2) -- tunnel
 
-  , (Moskva, Petrograd, Label [Just White] 0 4)
-  , (Moskva, Smolensk,  Label [Just Orange] 0 2)
+  , (Moskva, Petrograd, Label [White] 0 4)
+  , (Moskva, Smolensk,  Label [Orange] 0 2)
 
-  , (Munchen, Venezia, Label [Just Blue] 0 2) -- tunnel
-  , (Munchen, Wien,    Label [Just Orange] 0 3)
-  , (Munchen, Zurich,  Label [Just Yellow] 0 2) -- tunnel
+  , (Munchen, Venezia, Label [Blue] 0 2) -- tunnel
+  , (Munchen, Wien,    Label [Orange] 0 3)
+  , (Munchen, Zurich,  Label [Yellow] 0 2) -- tunnel
 
-  , (Palermo, Roma,   Label [Nothing] 1 4)
-  , (Palermo, Smyrna, Label [Nothing] 2 6)
+  , (Palermo, Roma,   Label [Special] 1 4)
+  , (Palermo, Smyrna, Label [Special] 2 6)
 
-  , (Pamplona, Paris, Label [Just Blue, Just Green] 0 4)
+  , (Pamplona, Paris, Label [Blue, Green] 0 4)
 
-  , (Paris, Zurich, Label [Nothing] 0 3) -- tunnel
+  , (Paris, Zurich, Label [Special] 0 3) -- tunnel
 
-  , (Petrograd, Riga,      Label [Nothing] 0 4)
-  , (Petrograd, Stockholm, Label [Nothing] 0 8) -- tunnel
-  , (Petrograd, Wilno,     Label [Just Blue] 0 4)
+  , (Petrograd, Riga,      Label [Special] 0 4)
+  , (Petrograd, Stockholm, Label [Special] 0 8) -- tunnel
+  , (Petrograd, Wilno,     Label [Blue] 0 4)
 
-  , (Riga, Wilno, Label [Just Green] 0 4)
+  , (Riga, Wilno, Label [Green] 0 4)
 
-  , (Roma, Venezia, Label [Just Black] 0 2)
+  , (Roma, Venezia, Label [Black] 0 2)
 
-  , (Rostov, Sevastopol, Label [Nothing] 0 4)
-  , (Rostov, Sochi,      Label [Nothing] 0 2)
+  , (Rostov, Sevastopol, Label [Special] 0 4)
+  , (Rostov, Sochi,      Label [Special] 0 2)
 
-  , (Sarajevo, Sofia,  Label [Nothing] 0 2) -- tunnel
-  , (Sarajevo, Zagrab, Label [Just Red] 0 3)
+  , (Sarajevo, Sofia,  Label [Special] 0 2) -- tunnel
+  , (Sarajevo, Zagrab, Label [Red] 0 3)
 
-  , (Sevastopol, Sochi, Label [Nothing] 1 2)
+  , (Sevastopol, Sochi, Label [Special] 1 2)
 
-  , (Smolensk, Wilno, Label [Just Yellow] 0 3)
+  , (Smolensk, Wilno, Label [Yellow] 0 3)
 
-  , (Venezia, Zagrab, Label [Nothing] 0 2)
-  , (Venezia, Zurich, Label [Just Green] 0 2) -- tunnel
+  , (Venezia, Zagrab, Label [Special] 0 2)
+  , (Venezia, Zurich, Label [Green] 0 2) -- tunnel
 
-  , (Warszawa, Wien,  Label [Just Blue] 0 4)
-  , (Warszawa, Wilno, Label [Just Red] 0 3)
+  , (Warszawa, Wien,  Label [Blue] 0 4)
+  , (Warszawa, Wilno, Label [Red] 0 3)
 
-  , (Wien, Zagrab, Label [Nothing] 0 2)
+  , (Wien, Zagrab, Label [Special] 0 2)
   ]
