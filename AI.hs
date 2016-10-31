@@ -75,7 +75,7 @@ data Move a
   -- ^ Draw a single visible locomotive card.
   | DrawCards (Maybe Colour) (Maybe Colour)
   -- ^ Draw cards, possibly from the deck.
-  | ClaimRoute a a [Colour]
+  | ClaimRoute a a Colour [Colour]
   -- ^ Claim a route, if the cards are in hand.
   | DrawTickets
   -- ^ Draw new ticket cards.
@@ -149,10 +149,10 @@ suggestRoute onlyPlanned ai = listToMaybe routes where
 
   -- routes which can be claimed.
   routes =
-    [ ClaimRoute from to cards | (from, to, label) <- allRoutes ai
-                               , colour <- lcolour label
-                               , let cards = haveCards colour (llocos label) (lweight label)
-                               , not (null cards)
+    [ ClaimRoute from to colour cards | (from, to, label) <- allRoutes ai
+                                      , colour <- lcolour label
+                                      , let cards = haveCards colour (llocos label) (lweight label)
+                                      , not (null cards)
     ]
 
   -- check if there are enough locomotives and trains in hand to claim
