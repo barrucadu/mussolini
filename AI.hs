@@ -75,7 +75,7 @@ data Move a
   -- ^ Draw a single visible locomotive card.
   | DrawCards (Maybe Colour) (Maybe Colour)
   -- ^ Draw cards, possibly from the deck.
-  | ClaimRoute a a Colour
+  | ClaimRoute a a [Colour]
   -- ^ Claim a route, if the cards are in hand.
   | DrawTickets
   -- ^ Draw new ticket cards.
@@ -149,23 +149,30 @@ suggestRoute onlyPlanned ai = listToMaybe routes where
 
   -- routes which can be claimed.
   routes =
-    [ ClaimRoute from to colour | (from, to, label) <- allRoutes ai
-                                , colour <- lcolour label
-                                , canClaim colour (llocos label) (lweight label)
+    [ ClaimRoute from to cards | (from, to, label) <- allRoutes ai
+                               , colour <- lcolour label
+                               , let cards = haveCards colour (llocos label) (lweight label)
+                               , not (null cards)
     ]
 
-  -- check if there are enough locomotives and trains in hand to claim the route.
-  canClaim colour locos weight =
-    let numLocos = M.findWithDefault 0 Special (hand ai)
+  -- check if there are enough locomotives and trains in hand to claim
+  -- the route, and return a list of cards to build the route
+  haveCards colour locos weight =
+    let weight' = weight - locos
+        numLocos = M.findWithDefault 0 Special (hand ai)
         hand' = M.update (\n -> if n <= locos then Nothing else Just (n-locos)) Special (hand ai)
         remainingLocos = M.findWithDefault 0 Special hand'
         trains
           | colour == Special = listToMaybe . sortOn (Down . snd) $ M.assocs hand'
           | otherwise = Just (colour, M.findWithDefault 0 colour hand')
     in case trains of
-      Just (Special, _)  -> numLocos >= weight
-      Just (_, num) -> numLocos >= locos && num + remainingLocos >= weight - locos
-      Nothing -> False
+      Just (c, num)
+        | numLocos >= locos && num >= weight' ->
+            replicate locos Special ++ replicate weight' c
+        | numLocos >= locos && (num + remainingLocos) >= weight' ->
+            replicate (locos + weight' - num) Special ++ replicate num c
+        | otherwise -> []
+      Nothing -> []
 
 
 -------------------------------------------------------------------------------
