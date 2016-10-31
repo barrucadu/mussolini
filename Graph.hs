@@ -102,10 +102,14 @@ claimedEdges :: Enum a => Graph a -> [(a, a, Label)]
 claimedEdges = filter (\(_, _, l) -> lweight l == 0) . toList
 
 -- | Remove an edge from the graph. This is a simple way of indicating
--- that someone else has claimed it.
+-- that someone else has claimed it. If the edge has multiple colours,
+-- only the given colour is removed; otherwise the edge is removed
+-- entirely.
 loseEdge :: Enum a => a -> a -> Maybe Colour -> Graph a -> Graph a
 loseEdge from to colour = modlabel lose from to colour where
-  lose l = Just l { lcolour = filter (/=colour) (lcolour l) }
+  lose l = case lcolour l of
+    [_] -> Nothing
+    cs  -> Just l { lcolour = filter (/=colour) cs }
 
 
 -------------------------------------------------------------------------------
