@@ -119,24 +119,31 @@ loseEdge from to colour = modlabel lose from to colour where
 -- paths have the same weight, but one has fewer edges, that one will
 -- be preferred. Routes which are already owned are not included, so
 -- the \"path\" may be disconnected.
-shortestPath :: Enum a => a -> a -> Graph a -> [(a, a, Label)]
-shortestPath from to gr = go $ G.sp (fromEnum from) (fromEnum to) (graph gr2) where
-  go (n1:n2:rest) =
-    let lbl = edgelbl n1 n2
-        therest = go (n2:rest)
-    in if lweight lbl == 0
-       then therest
-       else (toEnum n1, toEnum n2, lbl) : therest
-  go _ = []
+shortestPath :: Enum a => a -> a -> Graph a -> Maybe [(a, a, Label)]
+shortestPath from to gr
+    | null sp   = Nothing
+    | otherwise = Just (go sp)
+  where
+    -- the shortest path
+    sp = G.sp (fromEnum from) (fromEnum to) (graph gr2)
 
-  -- this use of 'fromJust' is safe, because 'G.sp' only produces a
-  -- valid path.
-  edgelbl n1 n2 = fromJust (edgeFromTo (toEnum n1) (toEnum n2) gr)
+    -- convert the FGL path into the edge format we use.
+    go (n1:n2:rest) =
+      let lbl = edgelbl n1 n2
+          therest = go (n2:rest)
+      in if lweight lbl == 0
+         then therest
+         else (toEnum n1, toEnum n2, lbl) : therest
+    go _ = []
 
-  -- construct a new graph which is the same, but all edge weights
-  -- have 1 added. This means that a single n-cost edge will be
-  -- preferred over a multi-edge path summing to n.
-  gr2 = modgraph (\(n1, n2, l) -> Just (n1, n2, l+1)) gr
+    -- this use of 'fromJust' is safe, because 'G.sp' only produces a
+    -- valid path.
+    edgelbl n1 n2 = fromJust (edgeFromTo (toEnum n1) (toEnum n2) gr)
+
+    -- construct a new graph which is the same, but all edge weights
+    -- have 1 added. This means that a single n-cost edge will be
+    -- preferred over a multi-edge path summing to n.
+    gr2 = modgraph (\(n1, n2, l) -> Just (n1, n2, l+1)) gr
 
 -- | Get the total number of cards needed to build a path.
 pathCost :: Num n => [(a, a, Label)] -> n
