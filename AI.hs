@@ -107,11 +107,11 @@ suggest ai | drawLocomotive = DrawLocomotiveCard
           hand' = M.update (\n -> if n <= locos then Nothing else Just (n-locos)) Nothing (hand ai)
           remainingLocos = M.findWithDefault 0 Nothing hand'
           trains = case colour of
-            Just col -> Just (colour, M.findWithDefault 0 colour hand')
-            Nothing  -> listToMaybe . sortOn (Down . snd) $ M.assocs hand'
+            Just _  -> Just (colour, M.findWithDefault 0 colour hand')
+            Nothing -> listToMaybe . sortOn (Down . snd) $ M.assocs hand'
       in case trains of
-        Just (Just col, num) -> numLocos >= locos && num + remainingLocos >= weight - locos
-        Just (Nothing, num)  -> numLocos >= weight
+        Just (Just _, num) -> numLocos >= locos && num + remainingLocos >= weight - locos
+        Just (Nothing, _)  -> numLocos >= weight
         Nothing -> False
 
     -- the colours to claim, favour taking pairs.
@@ -145,13 +145,13 @@ suggest ai | drawLocomotive = DrawLocomotiveCard
 -- | Given a list of tickets, plan a rail network and decide which to
 -- keep.
 planTickets :: Enum a
-  => State a
+  => NonEmpty (a, a, Int)
+  -- ^ The new tickets: at least one MUST be kept.
+  -> State a
   -- ^ The AI state. The pending tickets are incorporated into the new
   -- plan.
-  -> NonEmpty (a, a, Int)
-  -- ^ The new tickets: at least one MUST be kept.
   -> (NonEmpty (a, a, Int), [(a, a, Label)])
-planTickets ai tickets = head . sortOn cmp $ planTickets' ai tickets where
+planTickets tickets ai = head . sortOn cmp $ planTickets' ai tickets where
   cmp = (tclass &&& Down . pathScore) . snd
 
   -- split up path lengths into fairly coarse-grained categories
@@ -162,7 +162,7 @@ planTickets ai tickets = head . sortOn cmp $ planTickets' ai tickets where
 -- | Replan the rail network, given the currently-pending tickets.
 replanTickets :: Enum a => State a -> [(a, a, Label)]
 replanTickets ai = case pendingTickets ai of
-  (t:ts) -> snd (planTickets ai { pendingTickets = ts } (t:|[]))
+  (t:ts) -> snd (planTickets (t:|[]) ai { pendingTickets = ts })
   []     -> []
 
 -- | Come up with a variety of plans. This produces one plan for every
@@ -213,14 +213,14 @@ inPlan a1 b1 = any go where
 -- Actions
 
 -- | Draw new cards.
-draw :: State a -> [Maybe Colour] -> State a
-draw ai cards = ai { hand = foldl' (flip $ M.alter go) (hand ai) cards } where
+draw :: [Maybe Colour] -> State a -> State a
+draw cards ai = ai { hand = foldl' (flip $ M.alter go) (hand ai) cards } where
   go (Just i) = Just (i+1)
   go Nothing  = Just 1
 
 -- | Discard cards.
-discard :: State a -> [Maybe Colour] -> State a
-discard ai cards = ai { hand = foldl' (flip $ M.update go) (hand ai) cards } where
+discard :: [Maybe Colour] -> State a -> State a
+discard cards ai = ai { hand = foldl' (flip $ M.update go) (hand ai) cards } where
   go i | i <= 1    = Nothing
        | otherwise = Just (i-1)
 
@@ -231,16 +231,16 @@ discard ai cards = ai { hand = foldl' (flip $ M.update go) (hand ai) cards } whe
 -- Make sure to 'discard' the needed cards! This function doesn't do
 -- so automatically, as locomotives give rise to multiple ways to pay
 -- for the same route in some cases.
-claim :: Enum a => State a -> a -> a -> Maybe Colour -> State a
-claim ai from to colour = ai { plan = newPlan, world = newWorld } where
+claim :: Enum a => a -> a -> Maybe Colour -> State a -> State a
+claim from to colour ai = ai { plan = newPlan, world = newWorld } where
   newWorld = claimEdge from to colour (world ai)
   newPlan = filter go (plan ai)
   go p = not $ inPlan from to [p]
 
 -- | Have an enemy claim a route. If the route is in the plan, it is
 -- recomputed.
-enemyClaim :: Enum a => State a -> a -> a -> Maybe Colour -> State a
-enemyClaim ai from to colour = ai { plan = newPlan, world = newWorld } where
+enemyClaim :: Enum a => a -> a -> Maybe Colour -> State a -> State a
+enemyClaim from to colour ai = ai { plan = newPlan, world = newWorld } where
   newWorld = loseEdge from to colour (world ai)
   newPlan | inPlan from to (plan ai) = replanTickets ai { world = newWorld }
           | otherwise = plan ai
