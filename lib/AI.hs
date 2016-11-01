@@ -53,6 +53,9 @@ data State a = State
   -- ^ The current hand.
   , ontable :: Map Colour Int
   -- ^ The currently-visible cards.
+  , contention :: Map a Int
+  -- ^ The number of routes to/from a place that have been claimed by
+  -- enemies.
   , remainingTrains :: Int
   -- ^ The number of trains remaining to build with, used to discard
   -- plans which are too close for comfort.
@@ -64,7 +67,7 @@ data State a = State
 
 -- | Construct a new game state.
 newState :: Int -> Graph a -> State a
-newState = State [] [] [] [] M.empty M.empty
+newState = State [] [] [] [] M.empty M.empty M.empty
 
 
 -------------------------------------------------------------------------------
@@ -83,7 +86,7 @@ data Move a
   deriving (Eq, Show)
 
 -- | Suggest the next move.
-suggest :: Enum a => State a -> Move a
+suggest :: (Enum a, Ord a) => State a -> Move a
 suggest ai | drawLocomotive = suggestedDraw
            | claimRoute     = fromJust planned
            | drawTickets    = DrawTickets
@@ -124,8 +127,8 @@ suggestDraw ai
     -- how many times a colour shows up in the plan
     nInPlan c = sum $ map (wval c) (plan ai) where
       wval Special (_, _, l) = lweight l
-      wval c (_, _, l)
-        | c `elem` lcolour l || Special `elem` lcolour l = lweight l - llocos l
+      wval c' (_, _, l)
+        | c' `elem` lcolour l || Special `elem` lcolour l = lweight l - llocos l
         | otherwise = 0
 
     -- how many times a colour shows up in the hand
@@ -144,19 +147,24 @@ suggestDraw ai
       _ -> (Nothing, Nothing)
 
 -- | Suggest a route to build, if possible.
-suggestRoute :: Enum a => Bool -> State a -> Maybe (Move a)
+suggestRoute :: (Enum a, Ord a) => Bool -> State a -> Maybe (Move a)
 suggestRoute onlyPlanned ai = listToMaybe routes where
   -- all routes.
   allRoutes | onlyPlanned = plan
             | otherwise   = toList . world
 
   -- routes which can be claimed.
-  routes = sortOn (\(ClaimRoute _ _ _ cs) -> Down (length cs))
+  routes = sortOn cmp
     [ ClaimRoute from to colour cards | (from, to, label) <- allRoutes ai
                                       , colour <- lcolour label
                                       , let cards = haveCards colour (llocos label) (lweight label)
                                       , not (null cards)
     ]
+
+  -- sort routes by contention and length
+  cmp (ClaimRoute from to _ cs) = Down (contended from + contended to, length cs)
+  cmp _ = undefined
+  contended p = M.findWithDefault 0 p (contention ai)
 
   -- check if there are enough locomotives and trains in hand to claim
   -- the route, and return a list of cards to build the route
@@ -348,22 +356,24 @@ claimSingle from to ai = case colour of
 -- | Have an enemy claim a route. This checks if any tickets have been
 -- blocked, removes the route from the plan, and recomputes the plan
 -- if necessary.
-enemyClaim :: Enum a => a -> a -> Colour -> State a -> State a
+enemyClaim :: (Enum a, Ord a) => a -> a -> Colour -> State a -> State a
 enemyClaim from to colour ai = updateTickets ai
     { plan  = newPlan
     , world = newWorld
+    , contention = contend from . contend to . contention $ ai
     }
   where
     newWorld = loseEdge from to colour (world ai)
     newPlan | inPlan from to (plan ai) = replanTickets ai { world = newWorld }
             | otherwise = plan ai
+    contend = M.alter (Just . maybe 1 (+1))
 
 -- | Helper for 'enemyClaim' for the case where there is only a single
 -- (remaining) route between the two places.
 --
 -- If there are multiple colours, this does not modify the state of
 -- the world.
-enemyClaimSingle :: Enum a => a -> a -> State a -> State a
+enemyClaimSingle :: (Enum a, Ord a) => a -> a -> State a -> State a
 enemyClaimSingle from to ai = case colour of
     (col:_) -> enemyClaim from to col ai
     _ -> ai

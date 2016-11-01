@@ -20,7 +20,7 @@ import qualified Graph
 import qualified AI
 
 -- | An interactive read-eval-print loop for playing as the AI.
-aiPlay :: forall a. (Enum a, Bounded a, Eq a, Read a, Show a) => State a -> IO ()
+aiPlay :: forall a. (Enum a, Bounded a, Ord a, Read a, Show a) => State a -> IO ()
 aiPlay s0 = runInputT settings $ do
     s' <- initialise s0
     case s' of
