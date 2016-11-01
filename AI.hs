@@ -59,7 +59,7 @@ data State a = State
   -- ^ The world map, with our edges at cost 0 and other players'
   -- edges removed.
   }
-  deriving Show
+  deriving (Show, Eq)
 
 -- | Construct a new game state.
 newState :: Int -> Graph a -> State a

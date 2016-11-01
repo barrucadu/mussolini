@@ -4,6 +4,7 @@
 module Interface.Haskeline (aiPlay) where
 
 import Control.Monad (when)
+import Data.Char (toLower)
 import Data.List (isPrefixOf)
 import qualified Data.List.NonEmpty as L
 import qualified Data.Map as M
@@ -47,7 +48,7 @@ aiPlay s0 = runInputT settings $ do
     -- game loop
     loop s = do
       outputStrLn ""
-      prompt "ai> " Just >>= \case
+      (s', continue) <- prompt "ai> " Just >>= \case
         "s" -> do
           let action = AI.suggest s
           outputStrLn (showMove action "\n")
@@ -56,24 +57,31 @@ aiPlay s0 = runInputT settings $ do
             (AI.DrawCards c1 c2) -> doDraw c1 c2 s
             (AI.ClaimRoute from to colour cards) -> pure $ doClaim from to colour cards s
             AI.DrawTickets -> doDrawTickets s
-          printDiff s s'
-          loop s'
+          pure (s', True)
         "e" -> do
           s' <- doEnemyClaim s
-          printDiff s s'
-          loop s'
+          pure (s', True)
         "v" -> do
           s' <- doSetCards s
-          printDiff s s'
-          loop s'
+          pure (s', True)
         "p" -> do
           printState outputStr s
-          loop s
+          pure (s, True)
         "h" -> do
           help
-          loop s
-        "q" -> pure ()
-        _   -> loop s
+          pure (s, True)
+        "q" -> pure (s, False)
+        _   -> pure (s, True)
+
+      when continue $ do
+        printDiff s s'
+        newState <- if s /= s'
+          then do
+            outputStrLn ""
+            accept <- prompt "Accept? [y/n] " (Just . map toLower)
+            pure $ if accept `elem` ["accept", "y", "yes"] then s' else s
+          else pure s
+        loop newState
 
 -------------------------------------------------------------------------------
 -- Functions
