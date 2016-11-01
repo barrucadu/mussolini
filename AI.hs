@@ -134,11 +134,13 @@ suggestDraw ai
     hasColour c i = M.findWithDefault 0 c (ontable ai) >= i
 
     -- the colours to claim.
-    (colour1, colour2) = case filter (\(c,_) -> hasColour c 1) neededColours of
-      ((colour, n):rest)
+    (colour1, colour2) = case partition (\(c,_) -> hasColour c 1) neededColours of
+      ((colour, n):_, (_, n2):_)
+        | n2 <= n -> (Just colour, Nothing)
+      ((colour, n):onTable, _)
         | n >= 2 && hasColour colour 2 -> (Just colour, Just colour)
-        | otherwise -> (Just colour, fst <$> listToMaybe rest)
-      [] -> (Nothing, Nothing)
+        | otherwise -> (Just colour, fst <$> listToMaybe onTable)
+      _ -> (Nothing, Nothing)
 
 -- | Suggest a route to build, if possible.
 suggestRoute :: Enum a => Bool -> State a -> Maybe (Move a)
