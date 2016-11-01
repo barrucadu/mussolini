@@ -58,7 +58,7 @@ aiPlay s0 = runInputT settings $ do
           outputStrLn (showMove action "\n")
           case action of
             AI.DrawLocomotiveCard -> doDrawSpecial s
-            (AI.DrawCards c1 c2) -> doDraw c1 c2 s
+            (AI.DrawCards cards) -> doDraw cards s
             (AI.ClaimRoute from to colour cards) ->
               pure . Just . AI.discard cards . AI.claim from to colour $ s
             AI.DrawTickets -> doDrawTickets s
@@ -107,15 +107,15 @@ doDrawSpecial s =
   pure . Just $ replaceDraw Graph.Special replacement s
 
 -- | Draw a pair of cards
-doDraw :: Maybe Colour -> Maybe Colour -> State a -> InputT IO (Maybe (State a))
-doDraw (Just c1) (Just c2) s =
+doDraw :: Maybe (Colour, Maybe Colour) -> State a -> InputT IO (Maybe (State a))
+doDraw (Just (c1, Just c2)) s =
   prompt "Replacement cards: " (readWordsL 2) .>= \replacements ->
   pure . Just . replaceDraw c2 (replacements !! 1) $ replaceDraw c1 (head replacements) s
-doDraw (Just c) _ s =
+doDraw (Just (c, Nothing)) s =
   prompt "Card from deck: "   readMaybe .>= \fromdeck ->
   prompt "Replacement card: " readMaybe .>= \replacement ->
   pure . Just . AI.draw [fromdeck] $ replaceDraw c replacement s
-doDraw _ _ s =
+doDraw Nothing s =
   prompt "Cards from deck: " (readWordsL 2) .>= \fromdeck ->
   pure . Just $ AI.draw fromdeck s
 
@@ -224,12 +224,12 @@ showAsideNum num = showString " (" . shows num . showString ")"
 showMove :: Show a => Move a -> ShowS
 showMove DrawLocomotiveCard =
   showString "Draw a locomotive card from the table."
-showMove (DrawCards (Just c1) (Just c2))
+showMove (DrawCards (Just (c1, Just c2)))
   | c1 == c2 = showString "Draw two " . shows c1 . showString " cards from the table."
   | otherwise = showString "Draw a " . shows c1 . showString " and a " . shows c2 . showString " card from the table."
-showMove (DrawCards (Just c) _) =
+showMove (DrawCards (Just (c, Nothing))) =
   showString "Draw a " . shows c . showString " card from the table and one from the deck."
-showMove (DrawCards _ _) =
+showMove (DrawCards Nothing) =
   showString "Draw two cards from the deck."
 showMove (ClaimRoute from to colour cards) =
   showString "Build the " . shows colour . showString " route from " . shows from . showString " to " . shows to . showString " with " . showList cards . showString "."

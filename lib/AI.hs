@@ -77,7 +77,7 @@ newState = State [] [] [] [] M.empty M.empty M.empty
 data Move a
   = DrawLocomotiveCard
   -- ^ Draw a single visible locomotive card.
-  | DrawCards (Maybe Colour) (Maybe Colour)
+  | DrawCards (Maybe (Colour, Maybe Colour))
   -- ^ Draw cards, possibly from the deck.
   | ClaimRoute a a Colour [Colour]
   -- ^ Claim a route, if the cards are in hand.
@@ -88,7 +88,7 @@ data Move a
 -- | Suggest the next move.
 suggest :: (Enum a, Ord a) => State a -> Move a
 suggest ai | drawLocomotive = suggestedDraw
-           | reallyNeedALocomotive = DrawCards Nothing Nothing
+           | reallyNeedALocomotive = DrawCards Nothing
            | claimRoute  = fromJust planned
            | drawTickets = DrawTickets
            | shouldBuild = fromJust routes
@@ -123,7 +123,7 @@ suggest ai | drawLocomotive = suggestedDraw
 suggestDraw :: State a -> Move a
 suggestDraw ai
     | M.findWithDefault 0 Special (ontable ai) > 0 = DrawLocomotiveCard
-    | otherwise = DrawCards colour1 colour2
+    | otherwise = DrawCards colours
   where
     -- the needed colours
     neededColours = sortOn snd [ (c, i) | c <- [minBound..maxBound]
@@ -145,13 +145,13 @@ suggestDraw ai
     hasColour c i = M.findWithDefault 0 c (ontable ai) >= i
 
     -- the colours to claim.
-    (colour1, colour2) = case partition (\(c,_) -> hasColour c 1) neededColours of
+    colours = case partition (\(c,_) -> hasColour c 1) neededColours of
       ((colour, n):_, _)
-        | n >= 2 && hasColour colour 2 -> (Just colour, Just colour)
+        | n >= 2 && hasColour colour 2 -> Just (colour, Just colour)
       ((colour, n):_, (_, n2):_)
-        | n2 <= n -> (Just colour, Nothing)
-      ((colour, _):onTable, _) -> (Just colour, fst <$> listToMaybe onTable)
-      _ -> (Nothing, Nothing)
+        | n2 <= n -> Just (colour, Nothing)
+      ((colour, _):onTable, _) -> Just (colour, fst <$> listToMaybe onTable)
+      _ -> Nothing
 
 -- | Suggest a route to build, if possible.
 suggestRoute :: (Enum a, Ord a) => Bool -> State a -> Maybe (Move a)
