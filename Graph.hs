@@ -16,6 +16,7 @@ module Graph
   , pathScore
   ) where
 
+import Data.Function (on)
 import qualified Data.Graph.Inductive.Graph as G
 import qualified Data.Graph.Inductive.Tree as G
 import qualified Data.Graph.Inductive.Query.SP as G
@@ -28,7 +29,10 @@ import Data.Maybe (fromJust, listToMaybe, mapMaybe)
 -- places and edge weights correspond to the number of tickets to buy
 -- it.
 newtype Graph a = Graph { graph :: G.Gr a Label }
-  deriving (Eq, Show)
+  deriving Show
+
+instance Eq (Graph a) where
+  (==) = (==) `on` G.labEdges . graph
 
 -- | All the possible route and card colours. The @Special@ colour
 -- refers to both locomotives and grey routes.
