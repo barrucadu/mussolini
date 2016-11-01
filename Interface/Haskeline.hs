@@ -5,7 +5,7 @@ module Interface.Haskeline (aiPlay) where
 
 import Control.Monad (when)
 import Data.Char (toLower)
-import Data.List (isPrefixOf)
+import Data.List (isPrefixOf, nub)
 import qualified Data.List.NonEmpty as L
 import qualified Data.Map as M
 import System.Console.Haskeline (InputT, defaultSettings, getInputLine, runInputT, outputStr, outputStrLn, setComplete)
@@ -171,13 +171,14 @@ prompt msg f = go where
 -- | Prompt for one of a set of options. If there is only one option,
 -- this short-circuits and just returns that.
 option :: (Eq a, Read a, Show a) => String -> [a] -> InputT IO (Maybe a)
-option _ [] = pure Nothing
-option _ [a] = pure (Just a)
-option msg as = prompt msg' f' where
-  msg' = showString msg . showList as $ " "
-  f' str = case readMaybe str of
-    Just a | a `elem` as -> Just a
-    _ -> Nothing
+option msg = go . nub where
+  go [] = pure Nothing
+  go [a] = pure (Just a)
+  go as = prompt msg' f' where
+    msg' = showString msg . showList as $ " "
+    f' str = case readMaybe str of
+      Just a | a `elem` as -> Just a
+      _ -> Nothing
 
 -- | A confirmation message, where anything other than "y" or "yes"
 -- (including empty input) is @False@.
