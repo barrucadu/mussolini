@@ -18,9 +18,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:     AI
                      , Graph
-                     , Interface.GHCi
-                     , Interface.Haskeline
-                     , Interface.Utils
+                     , Interface
                      , Variant.Europe
   -- other-modules:       
   -- other-extensions:    
