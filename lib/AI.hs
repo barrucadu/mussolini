@@ -88,10 +88,11 @@ data Move a
 -- | Suggest the next move.
 suggest :: (Enum a, Ord a) => State a -> Move a
 suggest ai | drawLocomotive = suggestedDraw
-           | claimRoute     = fromJust planned
-           | drawTickets    = DrawTickets
-           | shouldBuild    = fromJust routes
-           | otherwise      = suggestedDraw
+           | reallyNeedALocomotive = DrawCards Nothing Nothing
+           | claimRoute  = fromJust planned
+           | drawTickets = DrawTickets
+           | shouldBuild = fromJust routes
+           | otherwise   = suggestedDraw
   where
     drawLocomotive = case suggestedDraw of DrawLocomotiveCard -> True; _ -> False
     claimRoute     = isJust planned
@@ -103,6 +104,12 @@ suggest ai | drawLocomotive = suggestedDraw
     suggestedDraw = suggestDraw ai
     planned = suggestRoute True ai
     routes  = suggestRoute False ai
+
+    -- the AI \"really needs a locomotive\" if all of its remaining
+    -- planned routes involve locomotives, and it doesn't have enough
+    -- to build even one of them.
+    reallyNeedALocomotive = all (\(_, _, label) -> llocos label > numLocos) (plan ai)
+    numLocos = M.findWithDefault 0 Special (hand ai)
 
     -- if the number of remaining trains is below this point, don't
     -- draw a new ticket.
