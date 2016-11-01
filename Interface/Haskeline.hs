@@ -35,16 +35,10 @@ aiPlay s0 = runInputT settings $ do
     allColours = [minBound..maxBound] :: [Colour]
 
     -- set up the initial game state.
-    initialise s = do
-      theHand <- prompt "Cards in hand: " readWords
-      case theHand of
-        Just hand -> do
-          theTable <- prompt "Cards on table: " readWords
-          case theTable of
-            Just table ->
-              doDrawTickets . AI.draw hand . AI.setCards table $ s
-            Nothing -> pure Nothing
-        Nothing -> pure Nothing
+    initialise s =
+      prompt "Cards in hand: "  readWords .>= \theHand  ->
+      prompt "Cards on table: " readWords .>= \theTable ->
+      doDrawTickets . AI.draw theHand . AI.setCards theTable $ s
 
     -- a brief help message
     help = do
@@ -97,33 +91,22 @@ aiPlay s0 = runInputT settings $ do
 
 -- | Draw a locomotive
 doDrawSpecial :: State a -> InputT IO (Maybe (State a))
-doDrawSpecial s = do
-  mreplacement <- prompt "Replacement card: " readMaybe
-  pure $ do
-    replacement <- mreplacement
-    pure $ replaceDraw Special replacement s
+doDrawSpecial s =
+  prompt "Replacement card: " readMaybe .>= \replacement ->
+  pure . Just $ replaceDraw Special replacement s
 
 -- | Draw a pair of cards
 doDraw :: Maybe Colour -> Maybe Colour -> State a -> InputT IO (Maybe (State a))
-doDraw (Just c1) (Just c2) s = do
-  mreplacements <- prompt "Replacement cards: " (readWordsL 2)
-  pure $ do
-    replacements <- mreplacements
-    pure . replaceDraw c2 (replacements !! 1) . replaceDraw c1 (head replacements) $ s
-doDraw (Just c) _ s = do
-  mfromdeck  <- prompt "Card from deck: " readMaybe
-  case mfromdeck of
-    Just fromdeck -> do
-      mreplacement <- prompt "Replacement card: " readMaybe
-      pure $ do
-        replacement <- mreplacement
-        pure . AI.draw [fromdeck] . replaceDraw c replacement $ s
-    Nothing -> pure Nothing
-doDraw _ _ s = do
-  mfromdeck <- prompt "Cards from deck: " (readWordsL 2)
-  pure $ do
-    fromdeck <- mfromdeck
-    pure $ AI.draw fromdeck s
+doDraw (Just c1) (Just c2) s =
+  prompt "Replacement cards: " (readWordsL 2) .>= \replacements ->
+  pure . Just . replaceDraw c2 (replacements !! 1) $ replaceDraw c1 (head replacements) s
+doDraw (Just c) _ s =
+  prompt "Card from deck: "   readMaybe .>= \fromdeck ->
+  prompt "Replacement card: " readMaybe .>= \replacement ->
+  pure . Just . AI.draw [fromdeck] $ replaceDraw c replacement s
+doDraw _ _ s =
+  prompt "Cards from deck: " (readWordsL 2) .>= \fromdeck ->
+  pure . Just $ AI.draw fromdeck s
 
 -- | Claim a route.
 doClaim :: Enum a => a -> a -> Colour -> [Colour] -> State a -> State a
@@ -132,45 +115,36 @@ doClaim from to colour cards =
 
 -- | Draw tickets.
 doDrawTickets :: (Enum a, Read a, Show a) => State a -> InputT IO (Maybe (State a))
-doDrawTickets s = do
-  mtickets <- prompt "Tickets: " readTickets
-  case mtickets of
-    Just tickets -> do
-      let (keep, plan) = AI.planTickets tickets s
-      outputStr "\nKeep these tickets: "
-      printList outputStr showTicket "none!" (L.toList keep)
-      let s' = s { AI.pendingTickets = L.toList keep ++ AI.pendingTickets s
-                 , AI.plan = plan
-                 }
-      pure (Just s')
-    Nothing -> pure Nothing
+doDrawTickets s =
+  prompt "Tickets: " readTickets .>= \tickets -> do
+    let (keep, plan) = AI.planTickets tickets s
+    outputStr "\nKeep these tickets: "
+    printList outputStr showTicket "none!" (L.toList keep)
+    let s' = s { AI.pendingTickets = L.toList keep ++ AI.pendingTickets s
+               , AI.plan = plan
+               }
+    pure (Just s')
 
 -- | Register an enemy claim.
 doEnemyClaim :: (Enum a, Read a) => State a -> InputT IO (Maybe (State a))
-doEnemyClaim s = do
-  mfrom <- prompt "From:" readMaybe
-  case mfrom of
-    Just from -> do
-      mto <- prompt "To: " readMaybe
-      case mto of
-        Just to -> do
-          mcolour <- prompt "Colour: " readMaybe
-          pure $ do
-            colour <- mcolour
-            pure $ AI.enemyClaim from to colour s
-        Nothing -> pure Nothing
-    Nothing -> pure Nothing
+doEnemyClaim s =
+  prompt "From:"    readMaybe .>= \from ->
+  prompt "To: "     readMaybe .>= \to ->
+  prompt "Colour: " readMaybe .>= \colour ->
+  pure . Just $ AI.enemyClaim from to colour s
 
 -- | Set the visible cards.
 doSetCards :: State a -> InputT IO (Maybe (State a))
-doSetCards s = do
-  mtable <- prompt "Cards on table: " readWords
-  pure $ do
-    table <- mtable
-    pure $ AI.setCards table s
+doSetCards s =
+  prompt "Cards on table: " readWords .>= \table ->
+  pure . Just $ AI.setCards table s
 
 -------------------------------------------------------------------------------
 -- Utilities
+
+-- | Like '>>=' but nicely dealing with @Maybe@-values.
+(.>=) :: Monad m => m (Maybe a) -> (a -> m (Maybe b)) -> m (Maybe b)
+mma .>= mmf = mma >>= maybe (pure Nothing) mmf
 
 -- | Draw a card with replacement.
 replaceDraw :: Colour -> Colour -> State a -> State a
