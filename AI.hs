@@ -15,6 +15,7 @@ module AI
   , inPlan
     -- * Actions
   , setCards
+  , setHand
   , draw
   , discard
   , claim
@@ -297,6 +298,11 @@ inPlan a1 b1 = any go where
 -- | Set the visible cards on the table.
 setCards :: [Colour] -> State a -> State a
 setCards colours ai = ai { ontable = M.fromList [(c, count c) | c <- colours] } where
+  count c = length $ filter (==c) colours
+
+-- | Set the cards in the hand.
+setHand :: [Colour] -> State a -> State a
+setHand colours ai = ai { hand = M.fromList [(c, count c) | c <- colours] } where
   count c = length $ filter (==c) colours
 
 -- | Draw new cards.

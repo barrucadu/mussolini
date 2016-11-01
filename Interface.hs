@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 module Interface (aiPlay) where
 
@@ -44,28 +45,37 @@ aiPlay s0 = runInputT settings $ do
     -- a brief help message
     help = do
       outputStrLn "  s = suggest and play a move"
-      outputStrLn "  e = enemy claim   v = set visible cards"
-      outputStrLn "  p = print state   h = help     q = quit"
+      outputStrLn "  c = claim   d = discard   e = enemy claim"
+      outputStrLn "  T = set table cards   H = set hand cards   R = set remaining trains"
+      outputStrLn "  p = print state   h = help   q = quit"
 
     -- game loop
     loop s = do
       outputStrLn ""
       (s', continue) <- prompt "ai> " Just >>= \case
-        Just "s" -> do
+        Just "s" -> (,True) <$> do
           let action = AI.suggest s
           outputStrLn (showMove action "\n")
-          s' <- case action of
+          case action of
             AI.DrawLocomotiveCard -> doDrawSpecial s
             (AI.DrawCards c1 c2) -> doDraw c1 c2 s
-            (AI.ClaimRoute from to colour cards) -> pure . Just $ doClaim from to colour cards s
+            (AI.ClaimRoute from to colour cards) ->
+              pure . Just . AI.discard cards . AI.claim from to colour $ s
             AI.DrawTickets -> doDrawTickets s
-          pure (s', True)
-        Just "e" -> do
-          s' <- doEnemyClaim s
-          pure (s', True)
-        Just "v" -> do
-          s' <- doSetCards s
-          pure (s', True)
+        Just "c" -> (,True) <$> doClaim AI.claim s
+        Just "d" -> (,True) <$> do
+          c <- option "Discard: " (M.keys $ AI.hand s)
+          pure ((\c' -> AI.discard [c'] s) <$> c)
+        Just "e" -> (,True) <$> doClaim AI.enemyClaim s
+        Just "T" -> (,True) <$> do
+          cs <- prompt "Cards on table: " readWords
+          pure ((`AI.setCards` s) <$> cs)
+        Just "H" -> (,True) <$> do
+          cs <- prompt "Cards on table: " readWords
+          pure ((`AI.setHand` s) <$> cs)
+        Just "R" -> (,True) <$> do
+          t <- prompt "Remaining trains: " readMaybe
+          pure ((\t' -> s { AI.remainingTrains = t' }) <$> t)
         Just "p" -> do
           doPrintState s
           pure (Nothing, True)
@@ -109,11 +119,6 @@ doDraw _ _ s =
   prompt "Cards from deck: " (readWordsL 2) .>= \fromdeck ->
   pure . Just $ AI.draw fromdeck s
 
--- | Claim a route.
-doClaim :: Enum a => a -> a -> Colour -> [Colour] -> State a -> State a
-doClaim from to colour cards =
-  AI.discard cards . AI.claim from to colour
-
 -- | Draw tickets.
 doDrawTickets :: (Enum a, Read a, Show a) => State a -> InputT IO (Maybe (State a))
 doDrawTickets s =
@@ -126,22 +131,17 @@ doDrawTickets s =
                }
     pure (Just s')
 
--- | Register an enemy claim.
-doEnemyClaim :: (Enum a, Eq a, Read a, Show a) => State a -> InputT IO (Maybe (State a))
-doEnemyClaim s =
+-- | Register a claim.
+doClaim :: (Enum a, Eq a, Read a, Show a)
+  => (a -> a -> Colour -> State a -> State a) -> State a -> InputT IO (Maybe (State a))
+doClaim claimf s =
   prompt "From: " readMaybe .>= \from ->
   option "To: " (Graph.neighbours from (AI.world s)) .>= \to ->
   case Graph.edgeFromTo from to (AI.world s) of
     Just lbl ->
       option "Colour: " (Graph.lcolour lbl) .>= \colour ->
-      pure . Just $ AI.enemyClaim from to colour s
+      pure . Just $ claimf from to colour s
     Nothing -> pure Nothing
-
--- | Set the visible cards.
-doSetCards :: State a -> InputT IO (Maybe (State a))
-doSetCards s =
-  prompt "Cards on table: " readWords .>= \table ->
-  pure . Just $ AI.setCards table s
 
 doPrintState :: Show a => State a -> InputT IO ()
 doPrintState s = do
