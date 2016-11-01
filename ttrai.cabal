@@ -16,6 +16,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
+  hs-source-dirs:      lib
   exposed-modules:     AI
                      , Graph
                      , Interface
@@ -28,3 +29,10 @@ library
                      , haskeline  >=0.7 && <0.8
   -- hs-source-dirs:      
   default-language:    Haskell2010
+
+executable ttrai
+  hs-source-dirs:      exe
+  main-is:             Main.hs
+  build-depends:       base, ttrai
+  default-language:    Haskell2010
+  ghc-options:         -Wall
