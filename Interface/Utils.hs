@@ -82,6 +82,9 @@ printPlan puts s = case AI.plan s of
 
 printState :: (Show a, Monad m) => (String -> m ()) -> State a -> m ()
 printState puts s = do
+  puts . showString "Remaining trains: " . shows (AI.remainingTrains s) $ "\n"
+  puts "\n"
+
   puts "Cards:\n"
   puts "\tIn hand:  " >> printList puts showCard "none!" (M.toList $ AI.hand    s)
   puts "\tOn table: " >> printList puts showCard "none!" (M.toList $ AI.ontable s)
