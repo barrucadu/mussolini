@@ -5,6 +5,8 @@ module Graph
   , Label(..)
   , fromList
   , toList
+  -- * Nodes
+  , neighbours
   -- * Edges
   , edgeFromTo
   , claimEdge
@@ -80,6 +82,14 @@ fromList weights = Graph (G.mkGraph nodes edges) where
 -- | Convert a graph back into a list of edges.
 toList :: Enum a => Graph a -> [(a, a, Label)]
 toList gr = [(toEnum n1, toEnum n2, l) | (n1, n2, l) <- G.labEdges (graph gr), n1 < n2]
+
+
+-------------------------------------------------------------------------------
+-- Nodes
+
+-- | Get the neighbours of a node.
+neighbours :: Enum a => a -> Graph a -> [a]
+neighbours from gr = map toEnum $ G.suc (graph gr) (fromEnum from)
 
 
 -------------------------------------------------------------------------------

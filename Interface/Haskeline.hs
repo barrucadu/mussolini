@@ -127,10 +127,10 @@ doDrawTickets s =
     pure (Just s')
 
 -- | Register an enemy claim.
-doEnemyClaim :: (Enum a, Read a) => State a -> InputT IO (Maybe (State a))
+doEnemyClaim :: (Enum a, Eq a, Read a, Show a) => State a -> InputT IO (Maybe (State a))
 doEnemyClaim s =
   prompt "From: " readMaybe .>= \from ->
-  prompt "To: "   readMaybe .>= \to ->
+  option "To: " (Graph.neighbours from (AI.world s)) .>= \to ->
   case Graph.edgeFromTo from to (AI.world s) of
     Just lbl ->
       option "Colour: " (Graph.lcolour lbl) .>= \colour ->
