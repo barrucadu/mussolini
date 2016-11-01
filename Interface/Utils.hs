@@ -12,7 +12,7 @@ import qualified AI
 -- Pretty printing
 
 showCard :: (Colour, Int) -> ShowS
-showCard (colour, num) = showColour colour . showAsideNum num
+showCard (colour, num) = shows colour . showAsideNum num
 
 showTicket :: Show a => Ticket a -> ShowS
 showTicket (Ticket from to value) =
@@ -22,10 +22,6 @@ showPlanItem :: Show a => (a, a, Label) -> ShowS
 showPlanItem (from, to, label) =
   shows from . showString " -> " . shows to . showAsideNum (lweight label)
 
-showColour :: Colour -> ShowS
-showColour Special = showString "Locomotive"
-showColour c = shows c
-
 showAsideNum :: Int -> ShowS
 showAsideNum num = showString " (" . shows num . showString ")"
 
@@ -33,14 +29,14 @@ showMove :: Show a => Move a -> ShowS
 showMove DrawLocomotiveCard =
   showString "Draw a locomotive card from the table."
 showMove (DrawCards (Just c1) (Just c2))
-  | c1 == c2 = showString "Draw two " . showColour c1 . showString " cards from the table."
-  | otherwise = showString "Draw a " . showColour c1 . showString " and a " . showColour c2 . showString " card from the table."
+  | c1 == c2 = showString "Draw two " . shows c1 . showString " cards from the table."
+  | otherwise = showString "Draw a " . shows c1 . showString " and a " . shows c2 . showString " card from the table."
 showMove (DrawCards (Just c) _) =
-  showString "Draw a " . showColour c . showString " card from the table and one from the deck."
+  showString "Draw a " . shows c . showString " card from the table and one from the deck."
 showMove (DrawCards _ _) =
   showString "Draw two cards from the deck."
 showMove (ClaimRoute from to colour cards) =
-  showString "Build the " . showColour colour . showString " route from " . shows from . showString " to " . shows to . showString " with " . showList cards . showString "."
+  showString "Build the " . shows colour . showString " route from " . shows from . showString " to " . shows to . showString " with " . showList cards . showString "."
 showMove DrawTickets = showString "Draw new tickets."
 
 
