@@ -148,7 +148,7 @@ suggestRoute onlyPlanned ai = listToMaybe routes where
             | otherwise   = toList . world
 
   -- routes which can be claimed.
-  routes =
+  routes = sortOn (\(ClaimRoute _ _ _ cs) -> Down (length cs))
     [ ClaimRoute from to colour cards | (from, to, label) <- allRoutes ai
                                       , colour <- lcolour label
                                       , let cards = haveCards colour (llocos label) (lweight label)
