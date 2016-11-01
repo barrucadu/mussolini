@@ -19,6 +19,7 @@ module Graph
   ) where
 
 import Data.Function (on)
+import Data.List (partition)
 import qualified Data.Graph.Inductive.Graph as G
 import qualified Data.Graph.Inductive.Tree as G
 import qualified Data.Graph.Inductive.Query.SP as G
@@ -123,7 +124,7 @@ loseEdge :: Enum a => a -> a -> Colour -> Graph a -> Graph a
 loseEdge from to colour = modlabel lose from to colour where
   lose l = case lcolour l of
     [_] -> Nothing
-    cs  -> Just l { lcolour = filter (/=colour) cs }
+    cs  -> Just l { lcolour = let (eq,neq) = partition (==colour) cs in tail eq ++ neq }
 
 
 -------------------------------------------------------------------------------
