@@ -14,6 +14,7 @@ import Text.Read (readMaybe)
 
 import AI (State)
 import Graph (Colour(Special))
+import qualified Graph
 import qualified AI
 import Interface.Utils
 
@@ -128,10 +129,13 @@ doDrawTickets s =
 -- | Register an enemy claim.
 doEnemyClaim :: (Enum a, Read a) => State a -> InputT IO (Maybe (State a))
 doEnemyClaim s =
-  prompt "From:"    readMaybe .>= \from ->
-  prompt "To: "     readMaybe .>= \to ->
-  prompt "Colour: " readMaybe .>= \colour ->
-  pure . Just $ AI.enemyClaim from to colour s
+  prompt "From: " readMaybe .>= \from ->
+  prompt "To: "   readMaybe .>= \to ->
+  case Graph.edgeFromTo from to (AI.world s) of
+    Just lbl ->
+      option "Colour: " (Graph.lcolour lbl) .>= \colour ->
+      pure . Just $ AI.enemyClaim from to colour s
+    Nothing -> pure Nothing
 
 -- | Set the visible cards.
 doSetCards :: State a -> InputT IO (Maybe (State a))
@@ -163,6 +167,17 @@ prompt msg f = go where
       Just ""  -> pure Nothing
       Just str -> maybe (outputStrLn "Try again." >> go) (pure . Just) (f str)
       Nothing  -> pure Nothing
+
+-- | Prompt for one of a set of options. If there is only one option,
+-- this short-circuits and just returns that.
+option :: (Eq a, Read a, Show a) => String -> [a] -> InputT IO (Maybe a)
+option _ [] = pure Nothing
+option _ [a] = pure (Just a)
+option msg as = prompt msg' f' where
+  msg' = showString msg . showList as $ " "
+  f' str = case readMaybe str of
+    Just a | a `elem` as -> Just a
+    _ -> Nothing
 
 -- | A confirmation message, where anything other than "y" or "yes"
 -- (including empty input) is @False@.
