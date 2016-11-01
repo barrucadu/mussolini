@@ -182,7 +182,7 @@ printDiff old new = do
 
   when (AI.ontable new /= AI.ontable old) $ do
     outputStr "Cards on table: "
-    printList outputStr showCard "none!" (M.toList $ AI.hand new)
+    printList outputStr showCard "none!" (M.toList $ AI.ontable new)
 
   when (AI.plan new /= AI.plan old) $
     printPlan outputStr new
