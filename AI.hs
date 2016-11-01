@@ -135,11 +135,11 @@ suggestDraw ai
 
     -- the colours to claim.
     (colour1, colour2) = case partition (\(c,_) -> hasColour c 1) neededColours of
+      ((colour, n):_, _)
+        | n >= 2 && hasColour colour 2 -> (Just colour, Just colour)
       ((colour, n):_, (_, n2):_)
         | n2 <= n -> (Just colour, Nothing)
-      ((colour, n):onTable, _)
-        | n >= 2 && hasColour colour 2 -> (Just colour, Just colour)
-        | otherwise -> (Just colour, fst <$> listToMaybe onTable)
+      ((colour, _):onTable, _) -> (Just colour, fst <$> listToMaybe onTable)
       _ -> (Nothing, Nothing)
 
 -- | Suggest a route to build, if possible.
