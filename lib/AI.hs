@@ -166,24 +166,26 @@ suggestRoute onlyPlanned ai = listToMaybe routes where
   cmp _ = undefined
   contended p = M.findWithDefault 0 p (contention ai)
 
+  -- number of locomotives
+  totalLocos     = M.findWithDefault 0 Special (hand ai)
+  reservedLocos  = sum . map (\(_, _, label) -> llocos label) $ plan ai
+  remainingLocos = max 0 (totalLocos - reservedLocos)
+
+  -- hand with no locomotives
+  noLocoHand = M.delete Special (hand ai)
+
   -- check if there are enough locomotives and trains in hand to claim
   -- the route, and return a list of cards to build the route
   haveCards colour locos weight =
-    let weight' = weight - locos
-        numLocos = M.findWithDefault 0 Special (hand ai)
-        hand' = M.update (\n -> if n <= locos then Nothing else Just (n-locos)) Special (hand ai)
-        remainingLocos = M.findWithDefault 0 Special hand'
+    let numCards = weight - locos
         trains
-          | colour == Special = listToMaybe . sortOn (Down . snd) $ M.assocs hand'
-          | otherwise = Just (colour, M.findWithDefault 0 colour hand')
+          | colour == Special = listToMaybe . sortOn (Down . snd) $ M.assocs noLocoHand
+          | otherwise = Just (colour, M.findWithDefault 0 colour noLocoHand)
     in case trains of
       Just (c, num)
-        | numLocos >= locos && num >= weight' ->
-            replicate locos Special ++ replicate weight' c
-        | numLocos >= locos && (num + remainingLocos) >= weight' ->
-            replicate (locos + weight' - num) Special ++ replicate num c
-        | otherwise -> []
-      Nothing -> []
+        | totalLocos >= locos && (num + remainingLocos) >= numCards ->
+            replicate locos Special ++ replicate (numCards - num) Special ++ replicate (min num numCards) c
+      _ -> []
 
 
 -------------------------------------------------------------------------------
