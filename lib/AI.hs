@@ -159,6 +159,7 @@ suggestRoute onlyPlanned ai = listToMaybe routes where
                                       , colour <- lcolour label
                                       , let cards = haveCards colour (llocos label) (lweight label)
                                       , not (null cards)
+                                      , length cards <= remainingTrains ai
     ]
 
   -- sort routes by contention and length
