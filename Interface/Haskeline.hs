@@ -173,7 +173,9 @@ prompt msg f = go where
 option :: (Eq a, Read a, Show a) => String -> [a] -> InputT IO (Maybe a)
 option msg = go . nub where
   go [] = pure Nothing
-  go [a] = pure (Just a)
+  go [a] = do
+    outputStrLn . showString msg . shows a $ " "
+    pure (Just a)
   go as = prompt msg' f' where
     msg' = showString msg . showList as $ " "
     f' str = case readMaybe str of
