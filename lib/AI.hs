@@ -30,10 +30,11 @@ import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as L
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Maybe (fromJust, isJust, isNothing, listToMaybe)
+import Data.Maybe (fromJust, fromMaybe, isJust, isNothing, listToMaybe)
 import Data.Ord (Down(..))
 
 import Graph
+import Util
 
 -------------------------------------------------------------------------------
 -- AI player state
@@ -58,6 +59,8 @@ data State a = State
   , contention :: Map a Int
   -- ^ The number of routes to/from a place that have been claimed by
   -- enemies.
+  , score :: Int
+  -- ^ The current score.
   , remainingTrains :: Int
   -- ^ The number of trains remaining to build with, used to discard
   -- plans which are too close for comfort.
@@ -69,7 +72,7 @@ data State a = State
 
 -- | Construct a new game state.
 newState :: Int -> Graph a -> State a
-newState = State [] [] [] [] [] M.empty M.empty M.empty
+newState = State [] [] [] [] [] M.empty M.empty M.empty 0
 
 
 -------------------------------------------------------------------------------
@@ -338,8 +341,8 @@ discard cards ai = ai { hand = foldl' (flip $ M.update go) (hand ai) cards } whe
        | otherwise = Just (i-1)
 
 -- | Claim a route. This removes the route from the plan (if it's
--- present), updates the pending tickets if necessary, and recomputes
--- the plan if this completes a ticket.
+-- present), updates the pending tickets if necessary, recomputes the
+-- plan if this completes a ticket, and updates the score.
 --
 -- Make sure to 'discard' the needed cards! This function doesn't do
 -- so automatically, as locomotives give rise to multiple ways to pay
@@ -350,6 +353,7 @@ claim from to colour ai = case edgeFromTo from to (world ai) of
     { plan  = filter (not . inPlan from to . (:[])) (plan ai)
     , world = claimEdge from to colour (world ai)
     , remainingTrains = remainingTrains ai - lweight lbl
+    , score = score ai + fromMaybe 0 (routeScore $ lweight lbl)
     }
   Nothing -> ai
 

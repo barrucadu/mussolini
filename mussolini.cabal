@@ -20,6 +20,7 @@ library
   exposed-modules:     AI
                      , Graph
                      , Interface
+                     , Util
                      , Variant.Europe
   -- other-modules:       
   -- other-extensions:    

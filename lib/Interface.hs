@@ -166,6 +166,7 @@ doClaim claimf s =
 -- | Print out the AI state.
 doPrintState :: Show a => State a -> UI ()
 doPrintState s = do
+  outputStr . showString "Score: " . shows (AI.score s) . showTicketScore s $ "\n"
   outputStr . showString "Remaining trains: " . shows (AI.remainingTrains s) $ "\n"
   outputStrLn ""
 
@@ -228,6 +229,15 @@ setCompletions completions = do
 
 -------------------------------------------------------------------------------
 -- (Utilities) Pretty printing
+
+-- | Show the additional score given by tickets.
+showTicketScore :: State a -> ShowS
+showTicketScore s =
+  let tscore f = sum $ map AI.tvalue (f s)
+  in case tscore AI.completedTickets - tscore AI.missedTickets of
+    0 -> showString " (0)"
+    n | n < 0 -> showAsideNum n
+      | n > 0 -> showString " (+" . shows n . showString ")"
 
 -- | Show a card and a quantity.
 showCards :: (Colour, Int) -> ShowS
@@ -310,8 +320,11 @@ printPlan s = case AI.plan s of
 -- the user explicitly enters that information.
 printDiff :: (Eq a, MonadIO m, Show a) => State a -> State a -> InputT m ()
 printDiff old new = do
+  when (AI.score new /= AI.score old || showTicketScore new "" /= showTicketScore old "") $
+    outputStr . showString "Score: " . shows (AI.score new) . showTicketScore new $ "\n"
+
   when (AI.remainingTrains new /= AI.remainingTrains old) $
-    outputStrLn $ "Remaining trains: " ++ show (AI.remainingTrains new)
+    outputStr . showString "Remaining trains: " . shows (AI.remainingTrains new) $ "\n"
 
   when (length (AI.completedTickets new) > length (AI.completedTickets old)) $ do
     let newTickets = filter (`notElem` AI.completedTickets old) (AI.completedTickets new)

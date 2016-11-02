@@ -25,6 +25,8 @@ import qualified Data.Graph.Inductive.Tree as G
 import qualified Data.Graph.Inductive.Query.SP as G
 import Data.Maybe (fromJust, listToMaybe, mapMaybe)
 
+import Util
+
 -------------------------------------------------------------------------------
 -- Graphs
 
@@ -166,15 +168,7 @@ pathCost = fromIntegral . sum . map (\(_, _, l) -> lweight l)
 
 -- | Get the score gained by building a path.
 pathScore :: Num n => [(a, a, Label)] -> n
-pathScore = sum . map (\(_, _, l) -> score l) where
-  score lbl = case lweight lbl of
-    1 -> 1
-    2 -> 2
-    3 -> 4
-    4 -> 7
-    6 -> 13
-    8 -> 21
-    _ -> 0
+pathScore = sum . mapMaybe (\(_, _, l) -> routeScore (lweight l))
 
 
 -------------------------------------------------------------------------------
