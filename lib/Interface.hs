@@ -2,6 +2,7 @@
 
 module Interface (aiPlay) where
 
+import Control.Arrow (first)
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Class (lift)
@@ -56,7 +57,7 @@ playGame s0 = do
     Nothing -> pure ()
 
 -- | Set up the initial game state.
-initialise :: (Bounded a, Enum a, Read a, Show a) => State a -> UI (Maybe (State a))
+initialise :: (Bounded a, Enum a, Eq a, Read a, Show a) => State a -> UI (Maybe (State a))
 initialise s0 =
   prompt allColours "Cards in hand: "  readWords .>= \theHand  ->
   prompt allColours "Cards on table: " readWords .>= \theTable ->
@@ -137,13 +138,15 @@ doMove s = do
       pure . Just . AI.discard cards . AI.claim from to colour $ s
 
 -- | Draw new tickets.
-doDrawTickets :: (Bounded a, Enum a, Read a, Show a) => State a -> UI (Maybe (State a))
+doDrawTickets :: (Bounded a, Enum a, Eq a, Read a, Show a) => State a -> UI (Maybe (State a))
 doDrawTickets s =
   prompt (allPlaces s) "Tickets: " readTickets .>= \tickets -> do
-  let (keep, plan) = AI.planTickets tickets s
+  let (keep, plan) = first L.toList (AI.planTickets tickets s)
+  let discard = filter (`notElem` keep) (L.toList tickets)
   outputStr "\nKeep these tickets: "
-  printList showTicket "none!" (L.toList keep)
-  let s' = s { AI.pendingTickets = L.toList keep ++ AI.pendingTickets s
+  printList showTicket "none!" keep
+  let s' = s { AI.pendingTickets   = keep    ++ AI.pendingTickets s
+             , AI.discardedTickets = discard ++ AI.discardedTickets s
              , AI.plan = plan
              }
   pure (Just s')
@@ -172,9 +175,10 @@ doPrintState s = do
   outputStrLn ""
 
   outputStr "Tickets:\n"
-  outputStr "\tComplete: " >> printList showTicket "none!" (AI.completedTickets s)
-  outputStr "\tPending:  " >> printList showTicket "none!" (AI.pendingTickets   s)
-  outputStr "\tMissed:   " >> printList showTicket "none!" (AI.missedTickets    s)
+  outputStr "\tComplete:  " >> printList showTicket "none!" (AI.completedTickets s)
+  outputStr "\tPending:   " >> printList showTicket "none!" (AI.pendingTickets   s)
+  outputStr "\tMissed:    " >> printList showTicket "none!" (AI.missedTickets    s)
+  outputStr "\tDiscarded: " >> printList showTicket "none!" (AI.discardedTickets s)
   outputStrLn ""
 
   printPlan s
@@ -302,8 +306,8 @@ printPlan s = case AI.plan s of
 
 -- | Print the difference between two states.
 --
--- Changes to the pending tickets displayed, as the user explicitly
--- enters that information.
+-- Changes to the pending and discarded tickets are not displayed, as
+-- the user explicitly enters that information.
 printDiff :: (Eq a, MonadIO m, Show a) => State a -> State a -> InputT m ()
 printDiff old new = do
   when (AI.remainingTrains new /= AI.remainingTrains old) $

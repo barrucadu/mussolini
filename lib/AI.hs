@@ -44,6 +44,8 @@ data State a = State
   , missedTickets :: [Ticket a]
   -- ^ Tickets which are impossible to complete (want to keep this
   -- list small!)
+  , discardedTickets :: [Ticket a]
+  -- ^ Tickets which have been discarded.
   , pendingTickets :: [Ticket a]
   -- ^ Tickets still being built.
   , plan :: [(a, a, Label)]
@@ -67,7 +69,7 @@ data State a = State
 
 -- | Construct a new game state.
 newState :: Int -> Graph a -> State a
-newState = State [] [] [] [] M.empty M.empty M.empty
+newState = State [] [] [] [] [] M.empty M.empty M.empty
 
 
 -------------------------------------------------------------------------------
