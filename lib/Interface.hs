@@ -1,6 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 
 module Interface (aiPlay) where
 
@@ -12,12 +11,17 @@ import qualified Data.List.NonEmpty as L
 import qualified Data.Map as M
 import System.Console.Haskeline (InputT, defaultSettings, getInputLine, runInputT, outputStr, outputStrLn, setComplete)
 import System.Console.Haskeline.Completion (completeWord, simpleCompletion)
+import System.Console.Haskeline.MonadException (Exception, MonadException, SomeException, catch, throwIO)
 import Text.Read (readMaybe)
 
 import AI (State, Ticket(..), Move(..))
 import Graph (Colour, Label(..))
 import qualified Graph
 import qualified AI
+
+-- | An exception signalling that the terminal UI should terminate.
+data Halt = Halt deriving Show
+instance Exception Halt
 
 -- | An interactive read-eval-print loop for playing as the AI.
 aiPlay :: forall a. (Enum a, Bounded a, Ord a, Read a, Show a) => State a -> IO ()
@@ -27,7 +31,7 @@ aiPlay s0 = runInputT settings $ do
       Just initialState -> do
         outputStrLn "\nEntering game loop..."
         help
-        loop initialState
+        loop initialState `catchAll` const (pure ())
       Nothing -> pure ()
   where
     -- the haskeline settings: completion for place names.
@@ -52,84 +56,79 @@ aiPlay s0 = runInputT settings $ do
     -- game loop
     loop s = do
       outputStrLn ""
-      (s', continue) <- prompt "ai> " Just >>= \case
-        Just "s" -> (,True) <$> do
-          let action = AI.suggest s
-          outputStrLn (showMove action "\n")
-          case action of
-            AI.DrawLocomotiveCard -> doDrawSpecial s
-            (AI.DrawCards cards) -> doDraw cards s
-            (AI.ClaimRoute from to colour cards) ->
-              pure . Just . AI.discard cards . AI.claim from to colour $ s
-            AI.DrawTickets -> doDrawTickets s
-        Just "c" -> (,True) <$> doClaim AI.claim s
-        Just "d" -> (,True) <$> do
-          c <- option "Discard: " (M.keys $ AI.hand s)
-          pure ((\c' -> AI.discard [c'] s) <$> c)
-        Just "e" -> (,True) <$> doClaim AI.enemyClaim s
-        Just "T" -> (,True) <$> do
-          cs <- prompt "Cards on table: " readWords
-          pure ((`AI.setCards` s) <$> cs)
-        Just "H" -> (,True) <$> do
-          cs <- prompt "Cards on table: " readWords
-          pure ((`AI.setHand` s) <$> cs)
-        Just "R" -> (,True) <$> do
-          t <- prompt "Remaining trains: " readMaybe
-          pure ((\t' -> s { AI.remainingTrains = t' }) <$> t)
-        Just "p" -> do
-          doPrintState s
-          pure (Nothing, True)
-        Just "h" -> do
-          help
-          pure (Nothing, True)
-        Just "q" -> pure (Nothing, False)
-        _   -> pure (Nothing, True)
+      s' <- prompt "ai> " Just >>= maybe (pure Nothing) (cmd s)
+      case s' of
+        Just newState
+          | s /= newState -> do
+            printDiff s newState
+            outputStrLn ""
+            accept <- confirm
+            loop (if accept then newState else s)
+        _ -> loop s
 
-      when continue $
-        case s' of
-          Just newState
-            | s /= newState -> do
-              printDiff s newState
-              outputStrLn ""
-              accept <- confirm
-              let realNewState = if accept then newState else s
-              loop realNewState
-            | otherwise -> loop s
-          Nothing -> loop s
+    -- process one command
+    cmd s "s" = doMove s
+    cmd s "c" = doClaim AI.claim s
+    cmd s "d" = do
+      c <- option "Discard: " (M.keys $ AI.hand s)
+      pure ((\c' -> AI.discard [c'] s) <$> c)
+    cmd s "e" = doClaim AI.enemyClaim s
+    cmd s "T" = do
+      cs <- prompt "Cards on table: " readWords
+      pure ((`AI.setCards` s) <$> cs)
+    cmd s "H" = do
+      cs <- prompt "Cards on table: " readWords
+      pure ((`AI.setHand` s) <$> cs)
+    cmd s "R" = do
+      t <- prompt "Remaining trains: " readMaybe
+      pure ((\t' -> s { AI.remainingTrains = t' }) <$> t)
+    cmd s "p" = do
+      doPrintState s
+      pure Nothing
+    cmd _ "h" = do
+      help
+      pure Nothing
+    cmd _ "q" = throwIO Halt
+    cmd _ _ = pure Nothing
+
 
 -------------------------------------------------------------------------------
 -- Functions
 
--- | Draw a locomotive
-doDrawSpecial :: State a -> InputT IO (Maybe (State a))
-doDrawSpecial s =
-  prompt "Replacement card: " readMaybe .>= \replacement ->
-  pure . Just $ replaceDraw Graph.Special replacement s
+-- | Suggest and perform a move.
+doMove :: (Enum a, Read a, Show a, Ord a) => State a -> InputT IO (Maybe (State a))
+doMove s = do
+  let action = AI.suggest s
+  outputStrLn (showMove action "\n")
+  case action of
+    AI.DrawLocomotiveCard ->
+      prompt "Replacement card: " readMaybe .>= \replacement ->
+      pure . Just $ replaceDraw Graph.Special replacement s
+    AI.DrawTickets -> doDrawTickets s
+    AI.DrawCards (Just (c1, Just c2)) ->
+      prompt "Replacement cards: " (readWordsL 2) .>= \replacements ->
+      pure . Just . replaceDraw c2 (replacements !! 1) $ replaceDraw c1 (head replacements) s
+    AI.DrawCards (Just (c, _)) ->
+      prompt "Card from deck: "   readMaybe .>= \fromdeck ->
+      prompt "Replacement card: " readMaybe .>= \replacement ->
+      pure . Just . AI.draw [fromdeck] $ replaceDraw c replacement s
+    AI.DrawCards _ ->
+      prompt "Cards from deck: " (readWordsL 2) .>= \fromdeck ->
+      pure . Just $ AI.draw fromdeck s
+    (AI.ClaimRoute from to colour cards) ->
+      pure . Just . AI.discard cards . AI.claim from to colour $ s
 
--- | Draw a pair of cards
-doDraw :: Maybe (Colour, Maybe Colour) -> State a -> InputT IO (Maybe (State a))
-doDraw (Just (c1, Just c2)) s =
-  prompt "Replacement cards: " (readWordsL 2) .>= \replacements ->
-  pure . Just . replaceDraw c2 (replacements !! 1) $ replaceDraw c1 (head replacements) s
-doDraw (Just (c, Nothing)) s =
-  prompt "Card from deck: "   readMaybe .>= \fromdeck ->
-  prompt "Replacement card: " readMaybe .>= \replacement ->
-  pure . Just . AI.draw [fromdeck] $ replaceDraw c replacement s
-doDraw Nothing s =
-  prompt "Cards from deck: " (readWordsL 2) .>= \fromdeck ->
-  pure . Just $ AI.draw fromdeck s
-
--- | Draw tickets.
+-- | Draw new tickets.
 doDrawTickets :: (Enum a, Read a, Show a) => State a -> InputT IO (Maybe (State a))
 doDrawTickets s =
   prompt "Tickets: " readTickets .>= \tickets -> do
-    let (keep, plan) = AI.planTickets tickets s
-    outputStr "\nKeep these tickets: "
-    printList showTicket "none!" (L.toList keep)
-    let s' = s { AI.pendingTickets = L.toList keep ++ AI.pendingTickets s
-               , AI.plan = plan
-               }
-    pure (Just s')
+  let (keep, plan) = AI.planTickets tickets s
+  outputStr "\nKeep these tickets: "
+  printList showTicket "none!" (L.toList keep)
+  let s' = s { AI.pendingTickets = L.toList keep ++ AI.pendingTickets s
+             , AI.plan = plan
+             }
+  pure (Just s')
 
 -- | Register a claim.
 doClaim :: (Enum a, Eq a, Read a, Show a)
@@ -143,6 +142,7 @@ doClaim claimf s =
       pure . Just $ claimf from to colour s
     Nothing -> pure Nothing
 
+-- | Print out the AI state.
 doPrintState :: Show a => State a -> InputT IO ()
 doPrintState s = do
   outputStr . showString "Remaining trains: " . shows (AI.remainingTrains s) $ "\n"
@@ -163,7 +163,7 @@ doPrintState s = do
 
 
 -------------------------------------------------------------------------------
--- Utilities (Console)
+-- (Utilities) Console
 
 -- | Prompt for input, and parse it. Returns @Nothing@ if no input was given.
 prompt :: String -> (String -> Maybe a) -> InputT IO (Maybe a)
@@ -309,7 +309,7 @@ printDiff old new = do
 
 
 -------------------------------------------------------------------------------
--- Utilities (Misc)
+-- (Utilities) Misc
 
 -- | Like '>>=' but nicely dealing with @Maybe@-values.
 (.>=) :: Monad m => m (Maybe a) -> (a -> m (Maybe b)) -> m (Maybe b)
@@ -322,3 +322,7 @@ replaceDraw original replacement s =
       onTable  = M.update (\i -> if i > 1 then Just (i-1) else Nothing) original (AI.ontable s)
       onTable' = M.alter (\case Just i -> Just (i+1); Nothing -> Just 1) replacement onTable
   in s' { AI.ontable = onTable' }
+
+-- | Catch all exceptions.
+catchAll :: MonadException m => m a -> (SomeException -> m a) -> m a
+catchAll = catch
