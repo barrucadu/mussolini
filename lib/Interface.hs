@@ -183,11 +183,9 @@ option msg = go . nub where
   go [a] = do
     outputStrLn . showString msg . shows a $ " "
     pure (Just a)
-  go as = prompt msg' f' where
-    msg' = showString msg . showList as $ " "
-    f' str = case readMaybe str of
-      Just a | a `elem` as -> Just a
-      _ -> Nothing
+  go as = prompt msg $ \str -> case readMaybe str of
+    Just a | a `elem` as -> Just a
+    _ -> Nothing
 
 -- | A confirmation message, where anything other than "y" or "yes"
 -- (including empty input) is @False@.
