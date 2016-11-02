@@ -1,10 +1,11 @@
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Interface (aiPlay) where
 
 import Control.Monad (when)
+import Control.Monad.IO.Class (liftIO)
 import Data.Char (toLower)
+import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.List (isPrefixOf, nub)
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import qualified Data.List.NonEmpty as L
@@ -24,8 +25,20 @@ data Halt = Halt deriving Show
 instance Exception Halt
 
 -- | An interactive read-eval-print loop for playing as the AI.
-aiPlay :: forall a. (Enum a, Bounded a, Ord a, Read a, Show a) => State a -> IO ()
-aiPlay s0 = runInputT settings $ do
+aiPlay :: (Enum a, Bounded a, Ord a, Read a, Show a) => State a -> IO ()
+aiPlay s0 = do
+    cref <- newIORef []
+    runInputT (settings cref) (playGame cref s0)
+  where
+    -- Haskeline doesn't have an easy way to change the available
+    -- completions, so use an IORef.
+    settings cref = setComplete (completeWord Nothing " \t" (completions cref)) defaultSettings
+    completions cref str = map simpleCompletion . filter (isPrefixOf str) <$> readIORef cref
+
+ -- | Play the game!
+playGame :: (Enum a, Bounded a, Ord a, Read a, Show a)
+  => IORef [String] -> State a -> InputT IO ()
+playGame cref s0 = do
     s' <- initialise s0
     case s' of
       Just initialState -> do
@@ -34,17 +47,11 @@ aiPlay s0 = runInputT settings $ do
         loop initialState `catchAll` const (pure ())
       Nothing -> pure ()
   where
-    -- the haskeline settings: completion for place names.
-    settings = setComplete (completeWord Nothing " \t" completePlace) defaultSettings
-    completePlace str = pure . map simpleCompletion . filter (isPrefixOf str) $ map show allPlaces ++ map show allColours
-    allPlaces = [minBound..maxBound] :: [a]
-    allColours = [minBound..maxBound] :: [Colour]
-
     -- set up the initial game state.
     initialise s =
-      prompt "Cards in hand: "  readWords .>= \theHand  ->
-      prompt "Cards on table: " readWords .>= \theTable ->
-      doDrawTickets . AI.draw theHand . AI.setCards theTable $ s
+      prompt cref allColours "Cards in hand: "  readWords .>= \theHand  ->
+      prompt cref allColours "Cards on table: " readWords .>= \theTable ->
+      doDrawTickets cref . AI.draw theHand . AI.setCards theTable $ s
 
     -- a brief help message
     help = do
@@ -56,31 +63,31 @@ aiPlay s0 = runInputT settings $ do
     -- game loop
     loop s = do
       outputStrLn ""
-      s' <- prompt "ai> " Just >>= maybe (pure Nothing) (cmd s)
+      s' <- prompt cref [] "ai> " Just >>= maybe (pure Nothing) (cmd s)
       case s' of
         Just newState
           | s /= newState -> do
             printDiff s newState
             outputStrLn ""
-            accept <- confirm
+            accept <- confirm cref
             loop (if accept then newState else s)
         _ -> loop s
 
     -- process one command
-    cmd s "s" = doMove s
-    cmd s "c" = doClaim AI.claim s
+    cmd s "s" = doMove cref s
+    cmd s "c" = doClaim cref AI.claim s
     cmd s "d" = do
-      c <- option "Discard: " (M.keys $ AI.hand s)
+      c <- option cref "Discard: " (M.keys $ AI.hand s)
       pure ((\c' -> AI.discard [c'] s) <$> c)
-    cmd s "e" = doClaim AI.enemyClaim s
+    cmd s "e" = doClaim cref AI.enemyClaim s
     cmd s "T" = do
-      cs <- prompt "Cards on table: " readWords
+      cs <- prompt cref allColours "Cards on table: " readWords
       pure ((`AI.setCards` s) <$> cs)
     cmd s "H" = do
-      cs <- prompt "Cards on table: " readWords
+      cs <- prompt cref allColours "Cards on table: " readWords
       pure ((`AI.setHand` s) <$> cs)
     cmd s "R" = do
-      t <- prompt "Remaining trains: " readMaybe
+      t <- prompt cref [] "Remaining trains: " readMaybe
       pure ((\t' -> s { AI.remainingTrains = t' }) <$> t)
     cmd s "p" = do
       doPrintState s
@@ -96,32 +103,32 @@ aiPlay s0 = runInputT settings $ do
 -- Functions
 
 -- | Suggest and perform a move.
-doMove :: (Enum a, Read a, Show a, Ord a) => State a -> InputT IO (Maybe (State a))
-doMove s = do
+doMove :: (Bounded a, Enum a, Read a, Show a, Ord a) => IORef [String] -> State a -> InputT IO (Maybe (State a))
+doMove cref s = do
   let action = AI.suggest s
   outputStrLn (showMove action "\n")
   case action of
     AI.DrawLocomotiveCard ->
-      prompt "Replacement card: " readMaybe .>= \replacement ->
+      prompt cref allColours "Replacement card: " readMaybe .>= \replacement ->
       pure . Just $ replaceDraw Graph.Special replacement s
-    AI.DrawTickets -> doDrawTickets s
+    AI.DrawTickets -> doDrawTickets cref s
     AI.DrawCards (Just (c1, Just c2)) ->
-      prompt "Replacement cards: " (readWordsL 2) .>= \replacements ->
+      prompt cref allColours "Replacement cards: " (readWordsL 2) .>= \replacements ->
       pure . Just . replaceDraw c2 (replacements !! 1) $ replaceDraw c1 (head replacements) s
     AI.DrawCards (Just (c, _)) ->
-      prompt "Card from deck: "   readMaybe .>= \fromdeck ->
-      prompt "Replacement card: " readMaybe .>= \replacement ->
+      prompt cref allColours "Card from deck: "   readMaybe .>= \fromdeck ->
+      prompt cref allColours "Replacement card: " readMaybe .>= \replacement ->
       pure . Just . AI.draw [fromdeck] $ replaceDraw c replacement s
     AI.DrawCards _ ->
-      prompt "Cards from deck: " (readWordsL 2) .>= \fromdeck ->
+      prompt cref allColours "Cards from deck: " (readWordsL 2) .>= \fromdeck ->
       pure . Just $ AI.draw fromdeck s
     (AI.ClaimRoute from to colour cards) ->
       pure . Just . AI.discard cards . AI.claim from to colour $ s
 
 -- | Draw new tickets.
-doDrawTickets :: (Enum a, Read a, Show a) => State a -> InputT IO (Maybe (State a))
-doDrawTickets s =
-  prompt "Tickets: " readTickets .>= \tickets -> do
+doDrawTickets :: (Bounded a, Enum a, Read a, Show a) => IORef [String] -> State a -> InputT IO (Maybe (State a))
+doDrawTickets cref s =
+  prompt cref (allPlaces s) "Tickets: " readTickets .>= \tickets -> do
   let (keep, plan) = AI.planTickets tickets s
   outputStr "\nKeep these tickets: "
   printList showTicket "none!" (L.toList keep)
@@ -131,14 +138,14 @@ doDrawTickets s =
   pure (Just s')
 
 -- | Register a claim.
-doClaim :: (Enum a, Eq a, Read a, Show a)
-  => (a -> a -> Colour -> State a -> State a) -> State a -> InputT IO (Maybe (State a))
-doClaim claimf s =
-  prompt "From: " readMaybe .>= \from ->
-  option "To: " (Graph.neighbours from (AI.world s)) .>= \to ->
+doClaim :: (Bounded a, Enum a, Eq a, Read a, Show a)
+  => IORef [String] -> (a -> a -> Colour -> State a -> State a) -> State a -> InputT IO (Maybe (State a))
+doClaim cref claimf s =
+  option cref "From: " (allPlaces' s) .>= \from ->
+  option cref "To: " (Graph.neighbours from (AI.world s)) .>= \to ->
   case Graph.edgeFromTo from to (AI.world s) of
     Just lbl ->
-      option "Colour: " (Graph.lcolour lbl) .>= \colour ->
+      option cref "Colour: " (Graph.lcolour lbl) .>= \colour ->
       pure . Just $ claimf from to colour s
     Nothing -> pure Nothing
 
@@ -166,8 +173,8 @@ doPrintState s = do
 -- (Utilities) Console
 
 -- | Prompt for input, and parse it. Returns @Nothing@ if no input was given.
-prompt :: String -> (String -> Maybe a) -> InputT IO (Maybe a)
-prompt msg f = go where
+prompt :: IORef [String] -> [String] -> String -> (String -> Maybe a) -> InputT IO (Maybe a)
+prompt cref completions msg f = liftIO (writeIORef cref completions) >> go where
   go = do
     input <- getInputLine msg
     case input of
@@ -177,20 +184,21 @@ prompt msg f = go where
 
 -- | Prompt for one of a set of options. If there is only one option,
 -- this short-circuits and just returns that.
-option :: (Eq a, Read a, Show a) => String -> [a] -> InputT IO (Maybe a)
-option msg = go . nub where
+option :: (Eq a, Read a, Show a) => IORef [String] -> String -> [a] -> InputT IO (Maybe a)
+option cref msg = go . nub where
   go [] = pure Nothing
   go [a] = do
     outputStrLn . showString msg . shows a $ " "
     pure (Just a)
-  go as = prompt msg $ \str -> case readMaybe str of
+  go as = prompt cref (map show as) msg $ \str -> case readMaybe str of
     Just a | a `elem` as -> Just a
     _ -> Nothing
 
 -- | A confirmation message, where anything other than "y" or "yes"
 -- (including empty input) is @False@.
-confirm :: InputT IO Bool
-confirm = do
+confirm :: IORef [String] -> InputT IO Bool
+confirm cref = do
+  liftIO $ writeIORef cref ["y", "n"]
   input <- getInputLine "Accept? [y/N] "
   pure $ case input of
     Just str -> map toLower str `elem` ["y", "yes"]
@@ -324,3 +332,19 @@ replaceDraw original replacement s =
 -- | Catch all exceptions.
 catchAll :: MonadException m => m a -> (SomeException -> m a) -> m a
 catchAll = catch
+
+-- | All the colours as strings.
+allColours :: [String]
+allColours = map show allColours'
+
+-- | All the places as strings.
+allPlaces :: (Bounded a, Enum a, Show a) => proxy a -> [String]
+allPlaces = map show . allPlaces'
+
+-- | All the colours
+allColours' :: [Colour]
+allColours' = [minBound..maxBound]
+
+-- | All the places.
+allPlaces' :: (Bounded a, Enum a) => proxy a -> [a]
+allPlaces' _ = [minBound..maxBound]
