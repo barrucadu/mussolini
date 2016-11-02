@@ -10,7 +10,7 @@ session begins like so:
 
 ~~~
 $ stack build
-$ stack exec ttrai
+$ stack exec mussolini
 Cards in hand: Red White Blue Blue
 Cards on table: Green Green Special Orange White
 Tickets: Cadiz Stockholm 21 Berlin Bucuresti 8 Brest Marseille 7 Palermo Constantinople 8
