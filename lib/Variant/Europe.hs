@@ -62,134 +62,132 @@ europe = fromList europeEdges
 
 europeEdges :: [(Place, Place, Label)]
 europeEdges =
-  [ (Amsterdam, Bruxelles, Label [Black] 0 1)
-  , (Amsterdam, Essen,     Label [Yellow] 0 3)
-  , (Amsterdam, Frankfurt, Label [White] 0 2)
-  , (Amsterdam, London,    Label [Special] 2 2)
+  [ route  Amsterdam Bruxelles [Black] 1
+  , route  Amsterdam Essen [Yellow] 3
+  , route  Amsterdam Frankfurt [White] 2
+  , ferry  Amsterdam London [Special] 2 2
 
-  , (Angora, Constantinople, Label [Special] 0 2) -- tunnel
-  , (Angora, Erzurum,        Label [Black] 0 3)
-  , (Angora, Smyrna,         Label [Orange] 0 3) -- tunnel
+  , tunnel Angora Constantinople [Special] 2
+  , route  Angora Erzurum [Black] 3
+  , tunnel Angora Smyrna [Orange] 3
 
-  , (Athina, Brindisi, Label [Special] 1 4)
-  , (Athina, Sarajevo, Label [Green] 0 4)
-  , (Athina, Smyrna,   Label [Special] 1 2)
-  , (Athina, Sofia,    Label [Pink] 0 3)
+  , ferry  Athina Brindisi [Special] 1 4
+  , route  Athina Sarajevo [Green] 4
+  , ferry  Athina Smyrna [Special] 1 2
+  , route  Athina Sofia [Pink] 3
 
-  , (Barcelona, Madrid,    Label [Yellow] 0 2)
-  , (Barcelona, Marseille, Label [Special] 0 4)
-  , (Barcelona, Pamplona,  Label [Special] 0 2) -- tunnel
+  , route  Barcelona Madrid [Yellow] 2
+  , route  Barcelona Marseille [Special] 4
+  , tunnel Barcelona Pamplona [Special] 2
 
-  , (Berlin, Essen,     Label [Blue] 0 2)
-  , (Berlin, Danzig,    Label [Special] 0 4)
-  , (Berlin, Frankfurt, Label [Black, Red] 0 3)
-  , (Berlin, Warszawa,  Label [Pink, Yellow] 0 4)
-  , (Berlin, Wien,      Label [Green] 0 3)
+  , route  Berlin Essen [Blue] 2
+  , route  Berlin Danzig [Special] 4
+  , route  Berlin Frankfurt [Black, Red] 3
+  , route  Berlin Warszawa [Pink, Yellow] 4
+  , route  Berlin Wien [Green] 3
 
-  , (Brest, Dieppe,   Label [Orange] 0 2)
-  , (Brest, Paris,    Label [Black] 0 3)
-  , (Brest, Pamplona, Label [Pink] 0 4)
+  , route  Brest Dieppe [Orange] 2
+  , route  Brest Paris [Black] 3
+  , route  Brest Pamplona [Pink] 4
 
-  , (Brindisi, Palermo, Label [Special] 1 3)
-  , (Brindisi, Roma,    Label [White] 0 2)
+  , ferry  Brindisi Palermo [Special] 1 3
+  , route  Brindisi Roma [White] 2
 
-  , (Bruxelles, Dieppe,    Label [Green] 0 2)
-  , (Bruxelles, Frankfurt, Label [Blue] 0 2)
-  , (Bruxelles, Paris,     Label [Red, Yellow] 0 2)
+  , route  Bruxelles Dieppe [Green] 2
+  , route  Bruxelles Frankfurt [Blue] 2
+  , route  Bruxelles Paris [Red, Yellow] 2
 
-  , (Bucuresti, Budapest,       Label [Special] 0 4) -- tunnel
-  , (Bucuresti, Constantinople, Label [Yellow] 0 3)
-  , (Bucuresti, Kyiv,           Label [Special] 0 4)
-  , (Bucuresti, Sevastopol,     Label [White] 0 4)
-  , (Bucuresti, Sofia,          Label [Special] 0 2) -- tunnel
+  , tunnel Bucuresti Budapest [Special] 4
+  , route  Bucuresti Constantinople [Yellow] 3
+  , route  Bucuresti Kyiv [Special] 4
+  , route  Bucuresti Sevastopol [White] 4
+  , tunnel Bucuresti Sofia [Special] 2
 
-  , (Budapest, Kyiv,     Label [Special] 0 6) -- tunnel
-  , (Budapest, Sarajevo, Label [Pink] 0 3)
-  , (Budapest, Wien,     Label [Red, White] 0 1)
-  , (Budapest, Zagrab,   Label [Orange] 0 2)
+  , tunnel Budapest Kyiv [Special] 6
+  , route  Budapest Sarajevo [Pink] 3
+  , route  Budapest Wien [Red, White] 1
+  , route  Budapest Zagrab [Orange] 2
 
-  , (Cadiz, Lisboa, Label [Blue] 0 2)
-  , (Cadiz, Madrid, Label [Orange] 0 3)
+  , route  Cadiz Lisboa [Blue] 2
+  , route  Cadiz Madrid [Orange] 3
 
-  , (Constantinople, Sevastopol, Label [Special] 2 4)
-  , (Constantinople, Smyrna,     Label [Special] 0 2) -- tunnel
-  , (Constantinople, Sofia,      Label [Blue] 0 3)
+  , ferry  Constantinople Sevastopol [Special] 2 4
+  , tunnel Constantinople Smyrna [Special] 2
+  , route  Constantinople Sofia [Blue] 3
 
-  , (Danzig, Riga,     Label [Black] 0 3)
-  , (Danzig, Warszawa, Label [Special] 0 2)
+  , route  Danzig Riga [Black] 3
+  , route  Danzig Warszawa [Special] 2
 
-  , (Dieppe, London, Label [Special, Special] 1 2)
-  , (Dieppe, Paris,  Label [Pink] 0 1)
+  , ferry  Dieppe London [Special, Special] 1 2
+  , route  Dieppe Paris [Pink] 1
 
-  , (Edinburgh, London, Label [Black, Orange] 0 4)
+  , route  Edinburgh London [Black, Orange] 4
 
-  , (Erzurum, Sevastopol, Label [Special] 2 4)
-  , (Erzurum, Sochi,      Label [Red] 0 3) -- tunnel
+  , ferry  Erzurum Sevastopol [Special] 2 4
+  , tunnel Erzurum Sochi [Red] 3
 
-  , (Essen, Frankfurt, Label [Green] 0 2)
-  , (Essen, Kobenhavn, Label [Special, Special] 1 3)
+  , route  Essen Frankfurt [Green] 2
+  , ferry  Essen Kobenhavn [Special, Special] 1 3
 
-  , (Frankfurt, Munchen, Label [Pink] 0 2)
-  , (Frankfurt, Paris,   Label [Orange, White] 0 3)
+  , route  Frankfurt Munchen [Pink] 2
+  , route  Frankfurt Paris [Orange, White] 3
 
-  , (Kharkov, Kyiv,   Label [Special] 0 4)
-  , (Kharkov, Moskva, Label [Special] 0 4)
-  , (Kharkov, Rostov, Label [Green] 0 2)
+  , route  Kharkov Kyiv [Special] 4
+  , route  Kharkov Moskva [Special] 4
+  , route  Kharkov Rostov [Green] 2
 
-  , (Kobenhavn, Stockholm, Label [White, Yellow] 0 3)
+  , route  Kobenhavn Stockholm [White, Yellow] 3
 
-  , (Kyiv, Warszawa, Label [Special] 0 4)
-  , (Kyiv, Wilno,    Label [Special] 0 2)
-  , (Kyiv, Smolensk, Label [Red] 0 3)
+  , route  Kyiv Warszawa [Special] 4
+  , route  Kyiv Wilno [Special] 2
+  , route  Kyiv Smolensk [Red] 3
 
-  , (Lisboa, Madrid, Label [Pink] 0 3)
+  , route  Lisboa Madrid [Pink] 3
 
-  -- London
+  , tunnel Madrid Pamplona [Black, White] 3
 
-  , (Madrid, Pamplona, Label [Black, White] 0 3) -- tunnel
+  , route  Marseille Pamplona [Red] 4
+  , route  Marseille Paris [Special] 4
+  , tunnel Marseille Roma [Special] 4
+  , tunnel Marseille Zurich [Pink] 2
 
-  , (Marseille, Pamplona, Label [Red] 0 4)
-  , (Marseille, Paris,    Label [Special] 0 4)
-  , (Marseille, Roma,     Label [Special] 0 4) -- tunnel
-  , (Marseille, Zurich,   Label [Pink] 0 2) -- tunnel
+  , route  Moskva Petrograd [White] 4
+  , route  Moskva Smolensk [Orange] 2
 
-  , (Moskva, Petrograd, Label [White] 0 4)
-  , (Moskva, Smolensk,  Label [Orange] 0 2)
+  , tunnel Munchen Venezia [Blue] 2
+  , route  Munchen Wien [Orange] 3
+  , tunnel Munchen Zurich [Yellow] 2
 
-  , (Munchen, Venezia, Label [Blue] 0 2) -- tunnel
-  , (Munchen, Wien,    Label [Orange] 0 3)
-  , (Munchen, Zurich,  Label [Yellow] 0 2) -- tunnel
+  , ferry  Palermo Roma [Special] 1 4
+  , ferry  Palermo Smyrna [Special] 2 6
 
-  , (Palermo, Roma,   Label [Special] 1 4)
-  , (Palermo, Smyrna, Label [Special] 2 6)
+  , route  Pamplona Paris [Blue, Green] 4
 
-  , (Pamplona, Paris, Label [Blue, Green] 0 4)
+  , tunnel Paris Zurich [Special] 3
 
-  , (Paris, Zurich, Label [Special] 0 3) -- tunnel
+  , route  Petrograd Riga [Special] 4
+  , tunnel Petrograd Stockholm [Special] 8
+  , route  Petrograd Wilno [Blue] 4
 
-  , (Petrograd, Riga,      Label [Special] 0 4)
-  , (Petrograd, Stockholm, Label [Special] 0 8) -- tunnel
-  , (Petrograd, Wilno,     Label [Blue] 0 4)
+  , route  Riga Wilno [Green] 4
 
-  , (Riga, Wilno, Label [Green] 0 4)
+  , route  Roma Venezia [Black] 2
 
-  , (Roma, Venezia, Label [Black] 0 2)
+  , route  Rostov Sevastopol [Special] 4
+  , route  Rostov Sochi [Special] 2
 
-  , (Rostov, Sevastopol, Label [Special] 0 4)
-  , (Rostov, Sochi,      Label [Special] 0 2)
+  , tunnel Sarajevo Sofia [Special] 2
+  , route  Sarajevo Zagrab [Red] 3
 
-  , (Sarajevo, Sofia,  Label [Special] 0 2) -- tunnel
-  , (Sarajevo, Zagrab, Label [Red] 0 3)
+  , ferry  Sevastopol Sochi [Special] 1 2
 
-  , (Sevastopol, Sochi, Label [Special] 1 2)
+  , route  Smolensk Wilno [Yellow] 3
 
-  , (Smolensk, Wilno, Label [Yellow] 0 3)
+  , route  Venezia Zagrab [Special] 2
+  , tunnel Venezia Zurich [Green] 2
 
-  , (Venezia, Zagrab, Label [Special] 0 2)
-  , (Venezia, Zurich, Label [Green] 0 2) -- tunnel
+  , route  Warszawa Wien [Blue] 4
+  , route  Warszawa Wilno [Red] 3
 
-  , (Warszawa, Wien,  Label [Blue] 0 4)
-  , (Warszawa, Wilno, Label [Red] 0 3)
-
-  , (Wien, Zagrab, Label [Special] 0 2)
+  , route  Wien Zagrab [Special] 2
   ]

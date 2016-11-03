@@ -12,6 +12,10 @@ module Graph
   , claimEdge
   , claimedEdges
   , loseEdge
+  -- ** Constructors
+  , route
+  , ferry
+  , tunnel
   -- * Paths
   , shortestPath
   , pathCost
@@ -127,6 +131,20 @@ loseEdge from to colour = modlabel lose from to colour where
   lose l = case lcolour l of
     [_] -> Nothing
     cs  -> Just l { lcolour = let (eq,neq) = partition (==colour) cs in tail eq ++ neq }
+
+-- | A normal route.
+route :: a -> a -> [Colour] -> Int -> (a, a, Label)
+route from to colours weight = (from, to, Label colours 0 weight)
+
+-- | A ferry route.
+ferry :: a -> a -> [Colour] -> Int -> Int -> (a, a, Label)
+ferry from to colours locos weight = (from, to, Label colours locos weight)
+
+-- | A tunnel route.
+--
+-- Currently these are treated no differently to regular routes.
+tunnel :: a -> a -> [Colour] -> Int -> (a, a, Label)
+tunnel = route
 
 
 -------------------------------------------------------------------------------
