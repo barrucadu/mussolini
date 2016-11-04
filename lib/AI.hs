@@ -420,7 +420,7 @@ enemyClaim who from to colour ai = case edgeFromTo from to (world ai) of
     newPlan | inPlan from to (plan ai) = replanTickets ai { world = newWorld }
             | otherwise = plan ai
     contend = M.alter (Just . maybe 1 (+1))
-    emerge lbl e = e { etrains = etrains e - lweight lbl
+    emerge lbl e = e { etrains = etrains e + lweight lbl
                      , escore  = escore  e + fromMaybe 0 (routeScore $ lweight lbl)
                      }
 
