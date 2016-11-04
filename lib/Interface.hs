@@ -8,6 +8,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Reader (ReaderT(..), ask)
 import Data.Char (toLower)
+import Data.Foldable (for_)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.List (isPrefixOf, nub)
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
@@ -59,9 +60,10 @@ playGame s0 = do
 -- | Set up the initial game state.
 initialise :: (Bounded a, Enum a, Eq a, Read a, Show a) => State a -> UI (Maybe (State a))
 initialise s0 =
-  prompt allColours "Cards in hand: "  readWords .>= \theHand  ->
-  prompt allColours "Cards on table: " readWords .>= \theTable ->
-  doDrawTickets . AI.draw theHand . AI.setCards theTable $ s0
+  prompt allColours "Enemies: " readWords        .>= \theEnemies ->
+  prompt allColours "Cards in hand: "  readWords .>= \theHand    ->
+  prompt allColours "Cards on table: " readWords .>= \theTable   ->
+  doDrawTickets . AI.draw theHand . AI.setCards theTable . AI.setEnemies theEnemies $ s0
 
 -- | A brief help message.
 help :: UI ()
@@ -91,7 +93,9 @@ gameloop s = do
     cmd "d" = do
       c <- option "Discard: " (M.keys $ AI.hand s)
       pure ((\c' -> AI.discard [c'] s) <$> c)
-    cmd "e" = doClaim AI.enemyClaim s
+    cmd "e" =
+      option "Enemy: " (M.keys (AI.enemies s)) .>= \who ->
+      doClaim (AI.enemyClaim who) s
     cmd "T" = do
       cs <- prompt allColours "Cards on table: " readWords
       pure ((`AI.setCards` s) <$> cs)
@@ -100,7 +104,7 @@ gameloop s = do
       pure ((`AI.setHand` s) <$> cs)
     cmd "R" = do
       t <- prompt [] "Remaining trains: " readMaybe
-      pure ((\t' -> s { AI.remainingTrains = t' }) <$> t)
+      pure ((\t' -> s { AI.trains = AI.initialTrains s - t' }) <$> t)
     cmd "p" = do
       doPrintState s
       pure Nothing
@@ -170,15 +174,19 @@ doPrintState s = do
   outputStr . showString "Remaining trains: " . shows (AI.remainingTrains s) $ "\n"
   outputStrLn ""
 
-  outputStr "Cards:\n"
-  outputStr "\tIn hand:  " >> printList showCards "none!" (M.toList $ AI.hand    s)
+  outputStrLn "Enemies:"
+  for_ (M.keys $ AI.enemies s) $ \who ->
+    outputStr . showString "\t" . shows who . showString ": " . showEnemy who s $ "\n"
+
+  outputStrLn "Cards:"
+  outputStr "\tIn hand: "  >> printList showCards "none!" (M.toList $ AI.hand    s)
   outputStr "\tOn table: " >> printList showCards "none!" (M.toList $ AI.ontable s)
   outputStrLn ""
 
-  outputStr "Tickets:\n"
-  outputStr "\tComplete:  " >> printList showTicket "none!" (AI.completedTickets s)
-  outputStr "\tPending:   " >> printList showTicket "none!" (AI.pendingTickets   s)
-  outputStr "\tMissed:    " >> printList showTicket "none!" (AI.missedTickets    s)
+  outputStrLn "Tickets:"
+  outputStr "\tComplete: "  >> printList showTicket "none!" (AI.completedTickets s)
+  outputStr "\tPending: "   >> printList showTicket "none!" (AI.pendingTickets   s)
+  outputStr "\tMissed: "    >> printList showTicket "none!" (AI.missedTickets    s)
   outputStr "\tDiscarded: " >> printList showTicket "none!" (AI.discardedTickets s)
   outputStrLn ""
 
@@ -229,6 +237,13 @@ setCompletions completions = do
 
 -------------------------------------------------------------------------------
 -- (Utilities) Pretty printing
+
+-- | Show an enemy.
+showEnemy :: Colour -> State a -> ShowS
+showEnemy who s = case M.lookup who (AI.enemies s) of
+  Just e ->
+    shows (AI.escore e) . showString " score, " . shows (AI.eremainingTrains who s) . showString " remaining trains"
+  Nothing -> showString "who?"
 
 -- | Show the additional score given by tickets.
 showTicketScore :: State a -> ShowS
@@ -325,6 +340,10 @@ printDiff old new = do
 
   when (AI.remainingTrains new /= AI.remainingTrains old) $
     outputStr . showString "Remaining trains: " . shows (AI.remainingTrains new) $ "\n"
+
+  for_ (M.toList $ AI.enemies new) $ \(who, e) ->
+    when (Just e /= M.lookup who (AI.enemies old)) $
+      outputStr . showString "Enemy " . shows who . showString ": " . showEnemy who new $ "\n"
 
   when (length (AI.completedTickets new) > length (AI.completedTickets old)) $ do
     let newTickets = filter (`notElem` AI.completedTickets old) (AI.completedTickets new)

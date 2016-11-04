@@ -1,7 +1,11 @@
 module AI
   (-- * AI player state
     State(..)
+  , EnemyState(..)
   , newState
+  , initialE
+  , remainingTrains
+  , eremainingTrains
     -- * AI
   , Move(..)
   , suggest
@@ -16,6 +20,7 @@ module AI
     -- * Actions
   , setCards
   , setHand
+  , setEnemies
   , draw
   , discard
   , claim
@@ -61,18 +66,43 @@ data State a = State
   -- enemies.
   , score :: Int
   -- ^ The current score.
-  , remainingTrains :: Int
-  -- ^ The number of trains remaining to build with, used to discard
-  -- plans which are too close for comfort.
+  , enemies :: Map Colour EnemyState
+  -- ^ The state of the enemies.
+  , trains :: Int
+  -- ^ The number of trains spent.
+  , initialTrains :: Int
+  -- ^ The number of trains a player has at the start.
   , world :: Graph a
   -- ^ The world map, with our edges at cost 0 and other players'
   -- edges removed.
   }
-  deriving (Show, Eq)
+  deriving (Eq, Show)
+
+-- | The state of an enemy.
+data EnemyState = EnemyState
+  { escore  :: Int
+  -- ^ The score.
+  , etrains :: Int
+  -- ^ The number of trains spent.
+  }
+  deriving (Eq, Show)
 
 -- | Construct a new game state.
 newState :: Int -> Graph a -> State a
-newState = State [] [] [] [] [] M.empty M.empty M.empty 0
+newState = State [] [] [] [] [] M.empty M.empty M.empty 0 M.empty 0
+
+-- | Initial enemy state.
+initialE :: EnemyState
+initialE = EnemyState 0 0
+
+-- | The number of remaining trains.
+remainingTrains :: State a -> Int
+remainingTrains ai = initialTrains ai - trains ai
+
+-- | The number of remaining trains of an enemy. If the enemy is not
+-- present, they have 0 trains.
+eremainingTrains :: Colour -> State a -> Int
+eremainingTrains who ai = initialTrains ai - maybe 0 etrains (M.lookup who $ enemies ai)
 
 
 -------------------------------------------------------------------------------
@@ -328,6 +358,10 @@ setHand :: [Colour] -> State a -> State a
 setHand colours ai = ai { hand = M.fromList [(c, count c) | c <- colours] } where
   count c = length $ filter (==c) colours
 
+-- | Set the enemies, each starts with no score and no spent trains.
+setEnemies :: [Colour] -> State a -> State a
+setEnemies whos ai = ai { enemies = M.fromList [(who, initialE) | who <- whos] }
+
 -- | Draw new cards.
 draw :: [Colour] -> State a -> State a
 draw cards ai = ai { hand = foldl' (flip $ M.alter go) (hand ai) cards } where
@@ -350,10 +384,10 @@ discard cards ai = ai { hand = foldl' (flip $ M.update go) (hand ai) cards } whe
 claim :: Enum a => a -> a -> Colour -> State a -> State a
 claim from to colour ai = case edgeFromTo from to (world ai) of
   Just lbl -> updateTickets ai
-    { plan  = filter (not . inPlan from to . (:[])) (plan ai)
-    , world = claimEdge from to colour (world ai)
-    , remainingTrains = remainingTrains ai - lweight lbl
-    , score = score ai + fromMaybe 0 (routeScore $ lweight lbl)
+    { plan   = filter (not . inPlan from to . (:[])) (plan ai)
+    , world  = claimEdge from to colour (world ai)
+    , trains = trains ai + lweight lbl
+    , score  = score ai + fromMaybe 0 (routeScore $ lweight lbl)
     }
   Nothing -> ai
 
@@ -372,26 +406,32 @@ claimSingle from to ai = case colour of
 -- | Have an enemy claim a route. This checks if any tickets have been
 -- blocked, removes the route from the plan, and recomputes the plan
 -- if necessary.
-enemyClaim :: (Enum a, Ord a) => a -> a -> Colour -> State a -> State a
-enemyClaim from to colour ai = updateTickets ai
-    { plan  = newPlan
-    , world = newWorld
-    , contention = contend from . contend to . contention $ ai
-    }
+enemyClaim :: (Enum a, Ord a) => Colour -> a -> a -> Colour -> State a -> State a
+enemyClaim who from to colour ai = case edgeFromTo from to (world ai) of
+    Just lbl -> updateTickets ai
+      { plan  = newPlan
+      , world = newWorld
+      , contention = contend from . contend to . contention $ ai
+      , enemies = M.alter (Just . emerge lbl . fromMaybe initialE) who (enemies ai)
+      }
+    Nothing -> ai
   where
     newWorld = loseEdge from to colour (world ai)
     newPlan | inPlan from to (plan ai) = replanTickets ai { world = newWorld }
             | otherwise = plan ai
     contend = M.alter (Just . maybe 1 (+1))
+    emerge lbl e = e { etrains = etrains e - lweight lbl
+                     , escore  = escore  e + fromMaybe 0 (routeScore $ lweight lbl)
+                     }
 
 -- | Helper for 'enemyClaim' for the case where there is only a single
 -- (remaining) route between the two places.
 --
 -- If there are multiple colours, this does not modify the state of
 -- the world.
-enemyClaimSingle :: (Enum a, Ord a) => a -> a -> State a -> State a
-enemyClaimSingle from to ai = case colour of
-    (col:_) -> enemyClaim from to col ai
+enemyClaimSingle :: (Enum a, Ord a) => Colour -> a -> a -> State a -> State a
+enemyClaimSingle who from to ai = case colour of
+    (col:_) -> enemyClaim who from to col ai
     _ -> ai
   where
     colour = maybe [] lcolour $ edgeFromTo from to (world ai)
