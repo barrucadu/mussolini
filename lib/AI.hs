@@ -143,7 +143,7 @@ suggest ai | drawLocomotive = suggestedDraw
     -- the AI \"really needs a locomotive\" if all of its remaining
     -- planned routes involve locomotives, and it doesn't have enough
     -- to build even one of them.
-    reallyNeedALocomotive = all (\(_, _, label) -> llocos label > numLocos) (plan ai)
+    reallyNeedALocomotive = not (null $ plan ai) && all (\(_, _, label) -> llocos label > numLocos) (plan ai)
     numLocos = M.findWithDefault 0 Special (hand ai)
 
     -- if the number of remaining trains is below this point, don't
