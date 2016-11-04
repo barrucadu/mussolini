@@ -101,7 +101,7 @@ gameloop s = do
       cs <- prompt allColours "Cards on table: " readWords
       pure ((`AI.setCards` s) <$> cs)
     cmd "H" = do
-      cs <- prompt allColours "Cards on table: " readWords
+      cs <- prompt allColours "Cards in hand: " readWords
       pure ((`AI.setHand` s) <$> cs)
     cmd "R" = do
       t <- prompt [] "Remaining trains: " readMaybe
