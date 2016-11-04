@@ -81,6 +81,7 @@ gameloop s = do
     case s' of
       Just newState
         | s /= newState -> do
+          outputStrLn ""
           printDiff s newState
           outputStrLn ""
           accept <- confirm
