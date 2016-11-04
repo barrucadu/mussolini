@@ -173,10 +173,11 @@ doClaim claimf s =
     Nothing -> pure Nothing
 
 -- | Print out the AI state.
-doPrintState :: Show a => State a -> UI ()
+doPrintState :: (Enum a, Show a) => State a -> UI ()
 doPrintState s = do
   outputStr . showString "Score: " . shows (AI.score s) . showTicketScore s $ "\n"
   outputStr . showString "Remaining trains: " . shows (AI.remainingTrains s) $ "\n"
+  outputStr . showString "Min. remaining turns: " . shows (AI.remainingTurns s) $ "\n"
   outputStrLn ""
 
   outputStrLn "Enemies:"
@@ -337,14 +338,17 @@ printPlan s = case AI.plan s of
 -- | Print the difference between two states.
 --
 -- Changes to the pending and discarded tickets are not displayed, as
--- the user explicitly enters that information.
-printDiff :: (Eq a, MonadIO m, Show a) => State a -> State a -> InputT m ()
+-- the user explicitly enters (or is told) that information.
+printDiff :: (Enum a, Eq a, MonadIO m, Show a) => State a -> State a -> InputT m ()
 printDiff old new = do
   when (AI.score new /= AI.score old || showTicketScore new "" /= showTicketScore old "") $
     outputStr . showString "Score: " . shows (AI.score new) . showTicketScore new $ "\n"
 
   when (AI.remainingTrains new /= AI.remainingTrains old) $
     outputStr . showString "Remaining trains: " . shows (AI.remainingTrains new) $ "\n"
+
+  when (AI.remainingTurns new /= AI.remainingTurns old) $
+    outputStr . showString "Min. remaining turns: " . shows (AI.remainingTurns new) $ "\n"
 
   for_ (M.toList $ AI.enemies new) $ \(who, e) ->
     when (Just e /= M.lookup who (AI.enemies old)) $

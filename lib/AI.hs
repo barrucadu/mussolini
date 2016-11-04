@@ -6,6 +6,7 @@ module AI
   , initialE
   , remainingTrains
   , eremainingTrains
+  , remainingTurns
     -- * AI
   , Move(..)
   , suggest
@@ -104,6 +105,21 @@ remainingTrains ai = initialTrains ai - trains ai
 eremainingTrains :: Colour -> State a -> Int
 eremainingTrains who ai = initialTrains ai - maybe 0 etrains (M.lookup who $ enemies ai)
 
+-- | The minimum number of turns to end the game, assuming something
+-- is bought on every turn.
+remainingTurns :: Enum a => State a -> Int
+remainingTurns ai = greedySpendAll numTrains edges where
+  -- spend all the trains greedily
+  greedySpendAll n es = case dropWhile (>n) es of
+    (e:es') -> 1 + greedySpendAll (n - e) es'
+    [] -> 0
+
+  -- the edges available for purchase, sorted by weight descending
+  edges = sortOn Down [ lweight lbl | (_, _, lbl) <- toList (world ai), lweight lbl > 0 ]
+
+  -- the minimum number of remaining trains
+  numTrains = minimum $ remainingTrains ai : map (`eremainingTrains` ai) (M.keys $ enemies ai)
+
 
 -------------------------------------------------------------------------------
 -- AI
@@ -132,7 +148,7 @@ suggest ai | drawLocomotive = suggestedDraw
     drawLocomotive = case suggestedDraw of DrawLocomotiveCard -> True; _ -> False
     claimRoute     = isJust planned
     drawTickets    = null (pendingTickets ai) &&
-                     remainingTrains ai > minRemainingTrains &&
+                     remainingTurns ai < minRemainingTurns &&
                      length (missedTickets ai) < maxMissedTickets
     shouldBuild    = isJust routes && null (plan ai)
 
@@ -146,9 +162,9 @@ suggest ai | drawLocomotive = suggestedDraw
     reallyNeedALocomotive = not (null $ plan ai) && all (\(_, _, label) -> llocos label > numLocos) (plan ai)
     numLocos = M.findWithDefault 0 Special (hand ai)
 
-    -- if the number of remaining trains is below this point, don't
-    -- draw a new ticket.
-    minRemainingTrains = 10
+    -- if the minimum number of turns to end the game is below this
+    -- point, don't draw a new ticket.
+    minRemainingTurns = 3
 
     -- if the number of missed tickets is greater than this point,
     -- don't draw a new ticket.
