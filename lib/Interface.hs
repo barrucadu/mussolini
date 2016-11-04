@@ -123,20 +123,24 @@ gameloop s = do
 doMove :: (Bounded a, Enum a, Read a, Show a, Ord a) => State a -> UI (Maybe (State a))
 doMove s = do
   let action = AI.suggest s
-  outputStrLn (showMove action "\n")
+  outputStrLn (showMove action "")
   case action of
     AI.DrawLocomotiveCard ->
+      outputStrLn "" >>
       prompt allColours "Replacement card: " readMaybe .>= \replacement ->
       pure . Just $ replaceDraw Graph.Special replacement s
-    AI.DrawTickets -> doDrawTickets s
+    AI.DrawTickets -> outputStrLn "" >> doDrawTickets s
     AI.DrawCards (Just (c1, Just c2)) ->
+      outputStrLn "" >>
       prompt allColours "Replacement cards: " (readWordsL 2) .>= \replacements ->
       pure . Just . replaceDraw c2 (replacements !! 1) $ replaceDraw c1 (head replacements) s
     AI.DrawCards (Just (c, _)) ->
+      outputStrLn "" >>
       prompt allColours "Card from deck: "   readMaybe .>= \fromdeck ->
       prompt allColours "Replacement card: " readMaybe .>= \replacement ->
       pure . Just . AI.draw [fromdeck] $ replaceDraw c replacement s
     AI.DrawCards _ ->
+      outputStrLn "" >>
       prompt allColours "Cards from deck: " (readWordsL 2) .>= \fromdeck ->
       pure . Just $ AI.draw fromdeck s
     (AI.ClaimRoute from to colour cards) ->
